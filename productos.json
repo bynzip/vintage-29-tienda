@@ -1,0 +1,495 @@
+{
+  "generadoEn": "2026-09-16T02:23:04.096Z",
+  "origen": "imagenes",
+  "totalProductos": 11,
+  "totalFotos": 65,
+  "portada": [
+    {
+      "archivo": "PORTADA 1.jpg",
+      "ruta": "imagenes/PORTADA 1.jpg",
+      "orden": 1,
+      "lifestyle": false
+    },
+    {
+      "archivo": "PORTADA 2.jpg",
+      "ruta": "imagenes/PORTADA 2.jpg",
+      "orden": 2,
+      "lifestyle": false
+    },
+    {
+      "archivo": "PORTADA 3.jpg",
+      "ruta": "imagenes/PORTADA 3.jpg",
+      "orden": 3,
+      "lifestyle": false
+    }
+  ],
+  "productos": [
+    {
+      "nombre": "CADERA PANT ALANA",
+      "slug": "cadera-pant-alana",
+      "ruta": "imagenes/CADERA PANT ALANA",
+      "fotos": [
+        {
+          "archivo": "3.png",
+          "ruta": "imagenes/CADERA PANT ALANA/3.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "4.png",
+          "ruta": "imagenes/CADERA PANT ALANA/4.png",
+          "orden": 2,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7029.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7029.jpg",
+          "orden": 3,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7033.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7033.jpg",
+          "orden": 4,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7031.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7031.jpg",
+          "orden": 5,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7037.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7037.jpg",
+          "orden": 6,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7039.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7039.jpg",
+          "orden": 7,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7044 - copia.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7044 - copia.jpg",
+          "orden": 8,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7047.jpg",
+          "ruta": "imagenes/CADERA PANT ALANA/2T4A7047.jpg",
+          "orden": 9,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "CADERA PANT CHLOE",
+      "slug": "cadera-pant-chloe",
+      "ruta": "imagenes/CADERA PANT CHLOE",
+      "fotos": [
+        {
+          "archivo": "9.png",
+          "ruta": "imagenes/CADERA PANT CHLOE/9.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "10.png",
+          "ruta": "imagenes/CADERA PANT CHLOE/10.png",
+          "orden": 2,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291938.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291938.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291940.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291940.jpg",
+          "orden": 4,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291942.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291942.jpg",
+          "orden": 5,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291948.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291948.jpg",
+          "orden": 6,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291949.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291949.jpg",
+          "orden": 7,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291952.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291952.jpg",
+          "orden": 8,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291959.jpg",
+          "ruta": "imagenes/CADERA PANT CHLOE/V291959.jpg",
+          "orden": 9,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "CULOTTE ASHLEY BORDADO LAZOS",
+      "slug": "culotte-ashley-bordado-lazos",
+      "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS",
+      "fotos": [
+        {
+          "archivo": "1.png",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/1.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2.png",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/2.png",
+          "orden": 2,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292176.jpg",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/V292176.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292181.jpg",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/V292181.jpg",
+          "orden": 4,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292185.jpg",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/V292185.jpg",
+          "orden": 5,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292190.jpg",
+          "ruta": "imagenes/CULOTTE ASHLEY BORDADO LAZOS/V292190.jpg",
+          "orden": 6,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "FLARE PANT CADERA LAILA",
+      "slug": "flare-pant-cadera-laila",
+      "ruta": "imagenes/FLARE PANT CADERA LAILA",
+      "fotos": [
+        {
+          "archivo": "7.png",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/7.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "8.png",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/8.png",
+          "orden": 2,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291995.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V291995.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V291997.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V291997.jpg",
+          "orden": 4,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292003.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V292003.jpg",
+          "orden": 5,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292007.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V292007.jpg",
+          "orden": 6,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292012.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V292012.jpg",
+          "orden": 7,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292015.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V292015.jpg",
+          "orden": 8,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292019.jpg",
+          "ruta": "imagenes/FLARE PANT CADERA LAILA/V292019.jpg",
+          "orden": 9,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "FLARE PANT FREYA OP 1083",
+      "slug": "flare-pant-freya-op-1083",
+      "ruta": "imagenes/FLARE PANT FREYA OP 1083",
+      "fotos": [
+        {
+          "archivo": "2T4A7152.jpg",
+          "ruta": "imagenes/FLARE PANT FREYA OP 1083/2T4A7152.jpg",
+          "orden": 1,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7156.jpg",
+          "ruta": "imagenes/FLARE PANT FREYA OP 1083/2T4A7156.jpg",
+          "orden": 2,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7159.jpg",
+          "ruta": "imagenes/FLARE PANT FREYA OP 1083/2T4A7159.jpg",
+          "orden": 3,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7161.jpg",
+          "ruta": "imagenes/FLARE PANT FREYA OP 1083/2T4A7161.jpg",
+          "orden": 4,
+          "lifestyle": true
+        }
+      ]
+    },
+    {
+      "nombre": "PALAZO ODETTE",
+      "slug": "palazo-odette",
+      "ruta": "imagenes/PALAZO ODETTE",
+      "fotos": [
+        {
+          "archivo": "2T4A7166.jpg",
+          "ruta": "imagenes/PALAZO ODETTE/2T4A7166.jpg",
+          "orden": 1,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7169.jpg",
+          "ruta": "imagenes/PALAZO ODETTE/2T4A7169.jpg",
+          "orden": 2,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7172.jpg",
+          "ruta": "imagenes/PALAZO ODETTE/2T4A7172.jpg",
+          "orden": 3,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7174.jpg",
+          "ruta": "imagenes/PALAZO ODETTE/2T4A7174.jpg",
+          "orden": 4,
+          "lifestyle": true
+        }
+      ]
+    },
+    {
+      "nombre": "PALAZZO BIANCA",
+      "slug": "palazzo-bianca",
+      "ruta": "imagenes/PALAZZO BIANCA",
+      "fotos": [
+        {
+          "archivo": "2T4A7124.jpg",
+          "ruta": "imagenes/PALAZZO BIANCA/2T4A7124.jpg",
+          "orden": 1,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7130.jpg",
+          "ruta": "imagenes/PALAZZO BIANCA/2T4A7130.jpg",
+          "orden": 2,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7131.jpg",
+          "ruta": "imagenes/PALAZZO BIANCA/2T4A7131.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7133.jpg",
+          "ruta": "imagenes/PALAZZO BIANCA/2T4A7133.jpg",
+          "orden": 4,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "Straight pant Deysi bordado",
+      "slug": "straight-pant-deysi-bordado",
+      "ruta": "imagenes/Straight pant Deysi bordado",
+      "fotos": [
+        {
+          "archivo": "15.png",
+          "ruta": "imagenes/Straight pant Deysi bordado/15.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7088.jpg",
+          "ruta": "imagenes/Straight pant Deysi bordado/2T4A7088.jpg",
+          "orden": 2,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7090.jpg",
+          "ruta": "imagenes/Straight pant Deysi bordado/2T4A7090.jpg",
+          "orden": 3,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7092.jpg",
+          "ruta": "imagenes/Straight pant Deysi bordado/2T4A7092.jpg",
+          "orden": 4,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7093.jpg",
+          "ruta": "imagenes/Straight pant Deysi bordado/2T4A7093.jpg",
+          "orden": 5,
+          "lifestyle": false
+        },
+        {
+          "archivo": "14.png",
+          "ruta": "imagenes/Straight pant Deysi bordado/14.png",
+          "orden": 6,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "TOP DENIM LIUBA OP 1095",
+      "slug": "top-denim-liuba-op-1095",
+      "ruta": "imagenes/TOP DENIM LIUBA OP 1095",
+      "fotos": [
+        {
+          "archivo": "11.png",
+          "ruta": "imagenes/TOP DENIM LIUBA OP 1095/11.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7057.jpg",
+          "ruta": "imagenes/TOP DENIM LIUBA OP 1095/2T4A7057.jpg",
+          "orden": 2,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7058.jpg",
+          "ruta": "imagenes/TOP DENIM LIUBA OP 1095/2T4A7058.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "2T4A7065.jpg",
+          "ruta": "imagenes/TOP DENIM LIUBA OP 1095/2T4A7065.jpg",
+          "orden": 4,
+          "lifestyle": true
+        },
+        {
+          "archivo": "2T4A7068.jpg",
+          "ruta": "imagenes/TOP DENIM LIUBA OP 1095/2T4A7068.jpg",
+          "orden": 5,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "VESTIDO DENIM CHARLOTTE",
+      "slug": "vestido-denim-charlotte",
+      "ruta": "imagenes/VESTIDO DENIM CHARLOTTE",
+      "fotos": [
+        {
+          "archivo": "12.png",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/12.png",
+          "orden": 1,
+          "lifestyle": false
+        },
+        {
+          "archivo": "13.png",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/13.png",
+          "orden": 2,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292099.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292099.jpg",
+          "orden": 3,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292101.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292101.jpg",
+          "orden": 4,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292103.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292103.jpg",
+          "orden": 5,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292106.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292106.jpg",
+          "orden": 6,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292111.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292111.jpg",
+          "orden": 7,
+          "lifestyle": false
+        },
+        {
+          "archivo": "V292114.jpg",
+          "ruta": "imagenes/VESTIDO DENIM CHARLOTTE/V292114.jpg",
+          "orden": 8,
+          "lifestyle": false
+        }
+      ]
+    },
+    {
+      "nombre": "VESTIDO DENIM SHELLY OP 1103",
+      "slug": "vestido-denim-shelly-op-1103",
+      "ruta": "imagenes/VESTIDO DENIM SHELLY OP 1103",
+      "fotos": [
+        {
+          "archivo": "2T4A7163.jpg",
+          "ruta": "imagenes/VESTIDO DENIM SHELLY OP 1103/2T4A7163.jpg",
+          "orden": 1,
+          "lifestyle": true
+        }
+      ]
+    }
+  ]
+}
