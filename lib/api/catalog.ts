@@ -4,11 +4,22 @@ export type CatalogImage = {
   lifestyle: boolean;
 };
 
+export type CatalogVariant = {
+  sku: string;
+  size: string;
+  color: string;
+  available: number;
+};
+
 export type CatalogProduct = {
   slug: string;
   name: string;
+  description?: string;
+  category?: string;
+  price?: number;
   cover: string | null;
   images: CatalogImage[];
+  variants?: CatalogVariant[];
 };
 
 export type HeroImage = {
@@ -23,9 +34,9 @@ export type CatalogData = {
 
 /**
  * Única puerta de entrada al catálogo.
- * Hoy apunta al mini API local (/api/catalog) que lee productos.json.
- * Cuando exista la API REST real, cambia SOLO el endpoint / la implementación
- * de fetchCatalogData: el resto de la app no se entera.
+ * Sirve los productos publicados desde Supabase (/api/catalog).
+ * Cuando exista la API REST definitiva, cambia SOLO este endpoint: el resto
+ * de la app no se entera.
  */
 const CATALOG_ENDPOINT =
   process.env.NEXT_PUBLIC_CATALOG_ENDPOINT ?? "/api/catalog";
