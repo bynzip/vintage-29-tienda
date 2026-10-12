@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: {
@@ -8,11 +7,10 @@ export const metadata: Metadata = {
     template: "%s · Vintage 29",
   },
   description:
-    "Tienda online de ropa de mujer. Jeans, tops y vestidos con pago en línea y envío a todo el Perú.",
-  metadataBase: new URL("https://vintage29.pe"),
+    "Descubre prendas de mujer Vintage 29: jeans, tops y vestidos.",
   openGraph: {
     title: "Vintage 29",
-    description: "Descubre tu próximo look favorito.",
+    description: "Prendas para todos tus momentos.",
     type: "website",
     locale: "es_PE",
   },
@@ -25,9 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

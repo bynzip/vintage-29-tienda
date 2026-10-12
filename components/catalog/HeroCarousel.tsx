@@ -1,26 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { withWidth } from "@/lib/api/catalog";
-import { useCatalog } from "@/hooks/use-catalog";
+import type { HeroImage } from "@/lib/catalog/types";
 import ProgressiveImage from "@/components/catalog/ProgressiveImage";
 
-const HERO_WIDTH = 2560;
-const HERO_QUALITY = 90;
-const PREVIEW_WIDTH = 24;
-const PREVIEW_QUALITY = 20;
 const INTERVAL_MS = 13000;
 const TRANSITION_MS = 950;
 const SNAP_DELAY_MS = 40;
 
 export default function HeroCarousel({
-  children,
+  hero,
 }: {
-  children: React.ReactNode;
+  hero: HeroImage[];
 }) {
-  const { data } = useCatalog();
-  const hero = data?.hero ?? [];
   const count = hero.length;
 
   const [index, setIndex] = useState(0);
@@ -115,24 +109,34 @@ export default function HeroCarousel({
         className="hero-track"
         style={{ transform, transition: animate ? undefined : "none" }}
       >
-        {slides.map((image, position) => (
-          <div
-            className="hero-slide"
-            key={`${image.url}-${position}`}
-            aria-hidden={position !== index}
-          >
+        {slides.map((image, position) => {
+          const picture = (
             <ProgressiveImage
-              src={withWidth(image.url, HERO_WIDTH, HERO_QUALITY)}
-              previewSrc={withWidth(image.url, PREVIEW_WIDTH, PREVIEW_QUALITY)}
+              src={image.url}
+              sizes="100vw"
+              alt=""
+              quality={90}
               eager={position === 0}
               onReady={position === 0 ? () => setReady(true) : undefined}
-              alt=""
             />
-          </div>
-        ))}
+          );
+
+          return (
+            <div
+              className="hero-slide"
+              key={`${image.url}-${position}`}
+              aria-hidden={position !== index}
+            >
+              {image.href ? (
+                <Link className="hero-slide-link" href={image.href} aria-label={`Ver imagen ${position + 1}`}>
+                  {picture}
+                </Link>
+              ) : picture}
+            </div>
+          );
+        })}
       </div>
       <div className="hero-shade" />
-      {children}
 
       {count > 1 && (
         <>

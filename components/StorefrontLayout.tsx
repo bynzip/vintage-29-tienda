@@ -1,501 +1,210 @@
-"use client";
-
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Heart,
-  Menu,
-  Search,
-  ShoppingBag,
-  X,
-} from "lucide-react";
-import {
-  productImage,
-  searchProducts,
-  withWidth,
-  type CatalogProduct,
-} from "@/lib/api/catalog";
-import { useCatalog } from "@/hooks/use-catalog";
+import { Heart, Menu, MessageCircle, Search, ShoppingBag } from "lucide-react";
+import NewsletterForm from "@/components/NewsletterForm";
+import { getMainCategories } from "@/lib/catalog/categories";
 
-export type BagLine = {
-  slug: string;
-  name: string;
-  image: string;
-  quantity: number;
-};
+const contactLinks = [
+  "Sobre Vintage 29",
+  "Escríbenos",
+  "Localizador de tiendas",
+  "Guía de tallas",
+  "Ayuda",
+];
 
-type StorefrontContextValue = {
-  bag: BagLine[];
-  favorites: string[];
-  addToBag: (product: CatalogProduct) => void;
-  removeFromBag: (slug: string) => void;
-  setQuantity: (slug: string, quantity: number) => void;
-  clearBag: () => void;
-  toggleFavorite: (slug: string) => void;
-};
+const legalLinks = [
+  "Aviso legal",
+  "Declaración de privacidad",
+  "Política de cookies",
+  "Política de cambios",
+  "Preguntas frecuentes",
+];
 
-const StorefrontContext = createContext<StorefrontContextValue | null>(null);
+const footerSocials = [
+  {
+    label: "Facebook",
+    viewBox: "0 0 320 512",
+    path: "M80 299.3V512H196V299.3h86.5l18-97.8H196V166.9c0-51.7 20.3-71.5 72.7-71.5c16.3 0 29.4.4 37 1.2V7.9C291.4 4 256.4 0 236.2 0C129.3 0 80 50.5 80 159.4v42.1H14v97.8H80z",
+  },
+  {
+    label: "Instagram",
+    viewBox: "0 0 24 24",
+    path: "M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077",
+  },
+  {
+    label: "WhatsApp",
+    viewBox: "0 0 24 24",
+    path: "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z",
+  },
+  {
+    label: "X",
+    viewBox: "0 0 24 24",
+    path: "M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z",
+  },
+  {
+    label: "TikTok",
+    viewBox: "0 0 24 24",
+    path: "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z",
+  },
+];
 
-export function useStorefront() {
-  const value = useContext(StorefrontContext);
-  if (!value)
-    throw new Error("useStorefront must be used inside StorefrontLayout");
-  return value;
-}
-
-const BAG_KEY = "v29:bag";
-const FAVORITES_KEY = "v29:favorites";
-
-const helpLinks = [
-  ["Contáctanos", "/pages/contact"],
-  ["Envíos y entregas", "/pages/shipping"],
-  ["Cambios y devoluciones", "/pages/returns"],
-  ["Preguntas frecuentes", "/pages/faqs"],
-] as const;
-
-function Header() {
-  const { bag, favorites, removeFromBag, setQuantity } = useStorefront();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [bagOpen, setBagOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const router = useRouter();
-  const { data } = useCatalog();
-  const catalog = data?.products ?? [];
-  const searchResults = searchTerm.trim()
-    ? searchProducts(catalog, searchTerm).slice(0, 6)
-    : [];
-  const itemCount = bag.reduce((total, line) => total + line.quantity, 0);
-
-  const closeMenus = () => {
-    setMenuOpen(false);
-    setSearchOpen(false);
-    setBagOpen(false);
-  };
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = searchTerm.trim();
-    if (query) router.push(`/search/${encodeURIComponent(query)}`);
-    setSearchOpen(false);
-  };
-
-  return (
-    <>
-      <div className="announcement-bar">
-        <span>LA REBAJA DEL FINDE LARGO</span>
-        <span className="announcement-divider">—</span>
-        <span>HASTA 50% DE DESCUENTO</span>
-        <Link href="/collections/sale">
-          VER REBAJAS <ArrowRight size={12} strokeWidth={1.8} />
-        </Link>
-      </div>
-      <header className="site-header">
-        <div className="header-left">
-          <button
-            className="icon-button mobile-menu-trigger"
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={menuOpen}
-            onClick={() => {
-              setMenuOpen((open) => !open);
-              setSearchOpen(false);
-              setBagOpen(false);
-            }}
-          >
-            {menuOpen ? <X size={21} /> : <Menu size={21} />}
-          </button>
-          <nav className="desktop-nav" aria-label="Navegación principal">
-            <Link href="/catalogo">CATÁLOGO</Link>
-            <Link href="/collections/new-arrivals">NOVEDADES</Link>
-            <Link href="/collections/clothing">ROPA</Link>
-            <Link href="/collections/dresses">VESTIDOS</Link>
-            <Link className="sale-link" href="/collections/sale">
-              REBAJAS
-            </Link>
-          </nav>
-        </div>
-        <Link href="/" className="wordmark" aria-label="Vintage 29 inicio">
-          vintage 29<span>®</span>
-        </Link>
-        <div className="header-actions">
-          <button
-            className="header-search"
-            aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar"}
-            aria-expanded={searchOpen}
-            onClick={() => {
-              setSearchOpen((open) => !open);
-              setMenuOpen(false);
-              setBagOpen(false);
-            }}
-          >
-            <Search size={19} strokeWidth={1.6} />
-            <span>BUSCAR</span>
-          </button>
-          <Link
-            className="icon-button favorites-header-button"
-            href="/favorites"
-            aria-label={`Favoritos guardados, ${favorites.length} artículos`}
-          >
-            <Heart size={19} strokeWidth={1.6} />
-          </Link>
-          <Link
-            className="icon-button account-button"
-            href="/account"
-            aria-label="Tu cuenta"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="8" r="3.4" />
-              <path d="M5.4 20c.5-3.2 3.1-5.2 6.6-5.2s6.1 2 6.6 5.2" />
-            </svg>
-          </Link>
-          <button
-            className="icon-button bag-button"
-            aria-label={`Bolsa de compras con ${itemCount} artículos`}
-            aria-expanded={bagOpen}
-            onClick={() => {
-              setBagOpen((open) => !open);
-              setMenuOpen(false);
-              setSearchOpen(false);
-            }}
-          >
-            <ShoppingBag size={20} strokeWidth={1.6} />
-            <span className="bag-count">{itemCount}</span>
-          </button>
-        </div>
-      </header>
-
-      {searchOpen && (
-        <div className="search-panel-wrap">
-          <form className="search-panel" onSubmit={submitSearch}>
-            <Search size={19} strokeWidth={1.6} />
-            <input
-              autoFocus
-              type="search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="¿Qué estás buscando?"
-              aria-label="Buscar productos"
-            />
-            <button type="submit" aria-label="Buscar">
-              <ArrowRight size={19} />
-            </button>
-            <button
-              type="button"
-              aria-label="Cerrar búsqueda"
-              onClick={() => setSearchOpen(false)}
-            >
-              <X size={19} />
-            </button>
-          </form>
-          {searchTerm.trim() && (
-            <div className="search-suggestions">
-              {searchResults.length ? (
-                searchResults.map((product) => (
-                  <Link
-                    href={`/products/${product.slug}`}
-                    key={product.slug}
-                    onClick={() => setSearchOpen(false)}
-                  >
-                    <img src={withWidth(productImage(product), 120)} alt="" />
-                    <span>{product.name}</span>
-                    <strong>{product.images.length} fotos</strong>
-                  </Link>
-                ))
-              ) : (
-                <p>No encontramos productos. Prueba “pant” o “vestido”.</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {menuOpen && (
-        <nav className="mobile-nav" aria-label="Navegación móvil">
-          <Link href="/catalogo" onClick={closeMenus}>
-            Catálogo <ArrowUpRight size={16} />
-          </Link>
-          <Link href="/collections/new-arrivals" onClick={closeMenus}>
-            Novedades <ArrowUpRight size={16} />
-          </Link>
-          <Link href="/collections/clothing" onClick={closeMenus}>
-            Ropa <ArrowUpRight size={16} />
-          </Link>
-          <Link href="/collections/dresses" onClick={closeMenus}>
-            Vestidos <ArrowUpRight size={16} />
-          </Link>
-          <Link href="/collections/sale" onClick={closeMenus}>
-            Rebajas <ArrowUpRight size={16} />
-          </Link>
-          <Link href="/account" onClick={closeMenus}>
-            Mi cuenta <ArrowUpRight size={16} />
-          </Link>
-          <p>Encuentra tu próximo favorito.</p>
-        </nav>
-      )}
-
-      {bagOpen && (
-        <div className="bag-scrim" onClick={() => setBagOpen(false)}>
-          <aside
-            className="bag-drawer"
-            onClick={(event) => event.stopPropagation()}
-            aria-label="Bolsa de compras"
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="bag-drawer-header">
-              <span>TU BOLSA ({itemCount})</span>
-              <button
-                className="icon-button"
-                aria-label="Cerrar bolsa"
-                onClick={() => setBagOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            {bag.length ? (
-              <>
-                <div className="bag-lines">
-                  {bag.map((line) => (
-                    <div className="bag-line" key={line.slug}>
-                      <img src={withWidth(line.image, 160)} alt={line.name} />
-                      <div>
-                        <strong>{line.name}</strong>
-                        <span className="bag-qty">
-                          <button
-                            aria-label={`Quitar una unidad de ${line.name}`}
-                            onClick={() =>
-                              setQuantity(line.slug, line.quantity - 1)
-                            }
-                          >
-                            −
-                          </button>
-                          <span>{line.quantity}</span>
-                          <button
-                            aria-label={`Añadir una unidad de ${line.name}`}
-                            onClick={() =>
-                              setQuantity(line.slug, line.quantity + 1)
-                            }
-                          >
-                            +
-                          </button>
-                        </span>
-                      </div>
-                      <button
-                        aria-label={`Quitar ${line.name}`}
-                        onClick={() => removeFromBag(line.slug)}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="bag-summary">
-                  <div>
-                    <span>Artículos</span>
-                    <strong>{itemCount}</strong>
-                  </div>
-                  <p>El precio y el envío se calculan al pagar.</p>
-                  <Link
-                    className="dark-button"
-                    href="/checkout"
-                    onClick={() => setBagOpen(false)}
-                  >
-                    IR A PAGAR <ArrowRight size={15} />
-                  </Link>
-                  <button
-                    className="bag-continue"
-                    onClick={() => setBagOpen(false)}
-                  >
-                    SEGUIR COMPRANDO
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="bag-empty">
-                <ShoppingBag size={27} strokeWidth={1.3} />
-                <p>Tu bolsa está un poco vacía.</p>
-                <span>Encontremos algo que te encante.</span>
-                <Link
-                  className="dark-button"
-                  href="/collections/new-arrivals"
-                  onClick={() => setBagOpen(false)}
-                >
-                  SEGUIR EXPLORANDO
-                </Link>
-              </div>
-            )}
-          </aside>
-        </div>
-      )}
-    </>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="site-footer">
-      <div className="footer-main page-gutter">
-        <div className="footer-brand">
-          <Link href="/" className="wordmark">
-            vintage 29<span>®</span>
-          </Link>
-          <p>
-            Para los grandes momentos
-            <br />
-            y también para los pequeños.
-          </p>
-          <div className="social-links">
-            <a
-              href="https://www.instagram.com/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              INSTAGRAM
-            </a>
-            <a href="https://www.tiktok.com/" target="_blank" rel="noreferrer">
-              TIKTOK
-            </a>
-          </div>
-        </div>
-        <div className="footer-column">
-          <span>¿NECESITAS AYUDA?</span>
-          {helpLinks.map(([label, path]) => (
-            <Link href={path} key={path}>
-              {label}
-            </Link>
-          ))}
-        </div>
-        <div className="footer-column">
-          <span>EL MUNDO VINTAGE 29</span>
-          <Link href="/pages/about">Nosotros</Link>
-          <Link href="/pages/sustainability">Sostenibilidad</Link>
-          <Link href="/pages/careers">Trabaja con nosotros</Link>
-          <Link href="/pages/student-discount">Descuento estudiante</Link>
-        </div>
-        <div className="footer-column footer-help">
-          <span>AQUÍ PARA TI</span>
-          <p>¿Tienes dudas? Nuestro equipo siempre está feliz de ayudarte.</p>
-          <Link className="footer-contact-link" href="/pages/contact">
-            CONTÁCTANOS <ArrowUpRight size={14} />
-          </Link>
-        </div>
-      </div>
-      <div className="footer-bottom page-gutter">
-        <span>© 2026 VINTAGE 29</span>
-        <span>PERÚ · PEN S/</span>
-        <span>HECHO PARA TU MOMENTO.</span>
-      </div>
-    </footer>
-  );
-}
-
-export default function StorefrontLayout({
+export default async function StorefrontLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [bag, setBag] = useState<BagLine[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    try {
-      const storedBag = localStorage.getItem(BAG_KEY);
-      if (storedBag) setBag(JSON.parse(storedBag) as BagLine[]);
-      const storedFavorites = localStorage.getItem(FAVORITES_KEY);
-      if (storedFavorites) setFavorites(JSON.parse(storedFavorites) as string[]);
-    } catch {
-      // localStorage no disponible: seguimos con estado en memoria.
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(BAG_KEY, JSON.stringify(bag));
-    } catch {
-      // Ignorar.
-    }
-  }, [bag, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-    } catch {
-      // Ignorar.
-    }
-  }, [favorites, hydrated]);
-
-  const addToBag = (product: CatalogProduct) =>
-    setBag((current) => {
-      const existing = current.find((line) => line.slug === product.slug);
-      if (existing) {
-        return current.map((line) =>
-          line.slug === product.slug
-            ? { ...line, quantity: line.quantity + 1 }
-            : line,
-        );
-      }
-      return [
-        ...current,
-        {
-          slug: product.slug,
-          name: product.name,
-          image: productImage(product),
-          quantity: 1,
-        },
-      ];
-    });
-
-  const removeFromBag = (slug: string) =>
-    setBag((current) => current.filter((line) => line.slug !== slug));
-
-  const setQuantity = (slug: string, quantity: number) =>
-    setBag((current) =>
-      quantity <= 0
-        ? current.filter((line) => line.slug !== slug)
-        : current.map((line) =>
-            line.slug === slug ? { ...line, quantity } : line,
-          ),
-    );
-
-  const clearBag = () => setBag([]);
-
-  const toggleFavorite = (slug: string) =>
-    setFavorites((current) =>
-      current.includes(slug)
-        ? current.filter((favorite) => favorite !== slug)
-        : [...current, slug],
-    );
-
-  const value = {
-    bag,
-    favorites,
-    addToBag,
-    removeFromBag,
-    setQuantity,
-    clearBag,
-    toggleFavorite,
-  };
+  const categories = await getMainCategories();
 
   return (
-    <StorefrontContext.Provider value={value}>
-      <div className="storefront">
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </div>
-    </StorefrontContext.Provider>
+    <div className="storefront">
+      <header className="site-header">
+        <div className="site-header-start">
+          <button
+            className="header-control header-menu"
+            type="button"
+            aria-label="Abrir menú de categorías"
+          >
+            <Menu size={19} strokeWidth={1.7} />
+            <span>MENÚ</span>
+          </button>
+          <button
+            className="header-control header-search"
+            type="button"
+            aria-label="Buscar productos"
+          >
+            <Search size={17} strokeWidth={1.7} />
+            <span>BUSCAR</span>
+          </button>
+        </div>
+        <Link href="/" className="wordmark" aria-label="Vintage 29 inicio">
+          Vintage 29<span>®</span>
+        </Link>
+        <nav className="site-header-end" aria-label="Acciones de la tienda">
+          <button className="header-icon" type="button" aria-label="Me gusta">
+            <Heart size={19} strokeWidth={1.6} />
+          </button>
+          <button
+            className="header-icon"
+            type="button"
+            aria-label="Bolsa de compras"
+          >
+            <ShoppingBag size={19} strokeWidth={1.6} />
+          </button>
+        </nav>
+      </header>
+      <main>{children}</main>
+      <footer className="site-footer">
+        <div className="footer-support-bar">
+          <span className="footer-support-icon" aria-hidden="true">
+            <MessageCircle size={18} strokeWidth={1.6} />
+          </span>
+          <span>CHAT EN VIVO - SOPORTE 24/7</span>
+        </div>
+        <div className="footer-main page-gutter">
+          <div className="footer-newsletter" id="newsletter">
+            <span className="footer-column-title">
+              SUSCRÍBETE A NUESTRO BOLETÍN
+            </span>
+            <NewsletterForm />
+            <p className="footer-newsletter-copy">
+              Al suscribirte, confirmas que has leído nuestra{" "}
+              <a href="#footer-legal">Política de privacidad</a> y aceptas
+              recibir novedades y comunicaciones de marketing.
+            </p>
+            <div className="footer-social-block">
+              <span className="footer-column-title">SÍGUENOS</span>
+              <div
+                className="footer-socials"
+                role="group"
+                aria-label="Redes sociales de Vintage 29"
+              >
+                {footerSocials.map(({ label, viewBox, path }) => (
+                  <span
+                    className="footer-social-icon"
+                    role="img"
+                    aria-label={label}
+                    key={label}
+                  >
+                    <svg viewBox={viewBox} aria-hidden="true" focusable="false">
+                      <path d={path} />
+                    </svg>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="footer-link-columns">
+            <nav
+              className="footer-link-column footer-contact-column"
+              aria-label="Contacto"
+            >
+              <span className="footer-column-title">CONTACTO</span>
+              <div className="footer-link-list footer-link-list--contact">
+                {contactLinks.map((label) => (
+                  <button
+                    className="footer-link-button"
+                    type="button"
+                    key={label}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </nav>
+
+            <nav
+              className="footer-link-column"
+              id="footer-legal"
+              aria-label="Información legal"
+            >
+              <span className="footer-column-title">LEGAL</span>
+              <div className="footer-link-list">
+                {legalLinks.map((label) => (
+                  <button
+                    className="footer-link-button"
+                    type="button"
+                    key={label}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </nav>
+
+            <nav className="footer-link-column" aria-label="Te puede interesar">
+              <span className="footer-column-title">TE PUEDE INTERESAR</span>
+              <div className="footer-category-list">
+                {categories.length > 0 ? (
+                  categories.map((category) => (
+                    <button
+                      className="footer-link-button"
+                      type="button"
+                      aria-disabled="true"
+                      data-category-slug={category.slug}
+                      key={category.id}
+                    >
+                      {category.name}
+                    </button>
+                  ))
+                ) : (
+                  <span className="footer-empty-category">
+                    Categorías próximamente
+                  </span>
+                )}
+              </div>
+            </nav>
+          </div>
+        </div>
+        <div className="footer-wordmark-wrap page-gutter">
+          <Link href="/" className="footer-wordmark">
+            Vintage 29
+          </Link>
+          <p className="footer-tagline">Prendas para todos tus momentos.</p>
+        </div>
+        <div className="footer-bottom page-gutter">
+          <span>© 2026 VINTAGE 29</span>
+        </div>
+      </footer>
+    </div>
   );
 }

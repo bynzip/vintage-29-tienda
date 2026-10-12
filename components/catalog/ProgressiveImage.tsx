@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import { getImagePreviewUrl } from "@/lib/catalog/images";
 
 type ProgressiveImageProps = {
   src: string;
-  previewSrc: string;
   alt?: string;
+  sizes: string;
   eager?: boolean;
+  quality?: number;
   onReady?: () => void;
 };
 
@@ -16,29 +19,38 @@ type ProgressiveImageProps = {
  */
 export default function ProgressiveImage({
   src,
-  previewSrc,
   alt = "",
+  sizes,
   eager = false,
+  quality = 78,
   onReady,
 }: ProgressiveImageProps) {
   const [loaded, setLoaded] = useState(false);
+  const previewSrc = getImagePreviewUrl(src);
 
   return (
-    <span className="pimg">
+    <span className="pimg pimg-progressive">
       <img
         className={`pimg-preview${loaded ? " is-hidden" : ""}`}
         src={previewSrc}
         alt=""
         aria-hidden="true"
-        onLoad={onReady}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        fetchPriority={eager ? "high" : "auto"}
       />
-      <img
+      <Image
+        fill
         className={`pimg-full${loaded ? " is-loaded" : ""}`}
         src={src}
         alt={alt}
-        loading={eager ? "eager" : "lazy"}
-        decoding="async"
-        onLoad={() => setLoaded(true)}
+        sizes={sizes}
+        quality={quality}
+        priority={eager}
+        onLoad={() => {
+          setLoaded(true);
+          onReady?.();
+        }}
       />
     </span>
   );

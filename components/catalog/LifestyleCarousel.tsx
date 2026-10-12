@@ -2,39 +2,41 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { withWidth, type CatalogProduct } from "@/lib/api/catalog";
-import { useCatalog } from "@/hooks/use-catalog";
-import ProgressiveImage from "@/components/catalog/ProgressiveImage";
+import type { CatalogProduct } from "@/lib/catalog/types";
+import Image from "next/image";
 
-const SLIDE_WIDTH = 640;
-const SLIDE_QUALITY = 68;
-const PREVIEW_WIDTH = 24;
-const PREVIEW_QUALITY = 20;
 const VISIBLE = 4;
-const STEP = 100 / VISIBLE;
 const INTERVAL_MS = 6000;
 const TRANSITION_MS = 700;
 const SNAP_DELAY_MS = 40;
 
-type Slide = { slug: string; image: string };
+type Slide = { slug: string; image: string; subcategory: string | null };
 
 function toSlides(products: CatalogProduct[]): Slide[] {
   return products
     .map((product) => {
       const lifestyle = product.images.find((image) => image.lifestyle);
       if (!lifestyle) return null;
-      return { slug: product.slug, image: lifestyle.url };
+      return { slug: product.slug, image: lifestyle.url, subcategory: product.category };
     })
     .filter((slide): slide is Slide => slide !== null);
 }
 
-export default function LifestyleCarousel() {
-  const { data } = useCatalog();
-  const items = data ? toSlides(data.products) : [];
+export default function LifestyleCarousel({ products }: { products: CatalogProduct[] }) {
+  const items = toSlides(products);
   const count = items.length;
 
   const [index, setIndex] = useState(0);
   const [animate, setAnimate] = useState(true);
+  const [visibleSlides, setVisibleSlides] = useState(VISIBLE);
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 640px)");
+    const updateVisibleSlides = () => setVisibleSlides(mobileQuery.matches ? 2 : VISIBLE);
+    updateVisibleSlides();
+    mobileQuery.addEventListener("change", updateVisibleSlides);
+    return () => mobileQuery.removeEventListener("change", updateVisibleSlides);
+  }, []);
 
   useEffect(() => {
     if (count < 2) return;
@@ -113,8 +115,8 @@ export default function LifestyleCarousel() {
   if (!count) return null;
 
   const slides =
-    count > 1 ? [...items, ...items.slice(0, Math.min(VISIBLE, count))] : items;
-  const transform = `translateX(calc(-${STEP}% * ${index}))`;
+    count > 1 ? [...items, ...items.slice(0, Math.min(visibleSlides, count))] : items;
+  const transform = `translateX(calc(-${100 / visibleSlides}% * ${index}))`;
 
   return (
     <section className="lifestyle-section" aria-label="Colección en uso">
@@ -131,17 +133,22 @@ export default function LifestyleCarousel() {
               aria-label={`Seleccionar ${slide.slug}`}
               onClick={() => goTo(position % count)}
             >
-              <ProgressiveImage
-                src={withWidth(slide.image, SLIDE_WIDTH, SLIDE_QUALITY)}
-                previewSrc={withWidth(slide.image, PREVIEW_WIDTH, PREVIEW_QUALITY)}
-                eager={position < VISIBLE}
+              <Image
+                src={slide.image}
+                fill
+                quality={90}
+                sizes="(max-width: 640px) 50vw, 25vw"
+                loading={position < 2 ? "eager" : "lazy"}
                 alt=""
               />
+              {slide.subcategory && (
+                <span className="lifestyle-subcategory">{slide.subcategory}</span>
+              )}
             </button>
           ))}
         </div>
 
-        {count > VISIBLE && (
+        {count > visibleSlides && (
           <>
             <button
               type="button"
