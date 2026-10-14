@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "60mb",
+    },
+    middlewareClientMaxBodySize: 62914560,
+  },
   images: {
     formats: ["image/webp"],
     minimumCacheTTL: 86400,

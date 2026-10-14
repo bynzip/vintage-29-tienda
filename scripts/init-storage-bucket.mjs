@@ -33,7 +33,7 @@ async function main() {
   if (!existing) {
     const { data, error } = await supabase.storage.createBucket(bucketName, {
       public: true,
-      fileSizeLimit: 10485760, // 10MB
+      fileSizeLimit: 52428800, // 50MB (máximo permitido por Supabase Free Tier)
       allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"],
     });
     if (error) {
@@ -42,7 +42,17 @@ async function main() {
       console.log("Bucket creado exitosamente:", data);
     }
   } else {
-    console.log("El bucket ya existe:", existing);
+    console.log("El bucket ya existe, actualizando límites a 50MB...");
+    const { data, error } = await supabase.storage.updateBucket(bucketName, {
+      public: true,
+      fileSizeLimit: 52428800, // 50MB
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"],
+    });
+    if (error) {
+      console.error("Error al actualizar bucket:", error);
+    } else {
+      console.log("Bucket actualizado exitosamente a 50MB:", data);
+    }
   }
 
   const { data: currentBuckets } = await supabase.storage.listBuckets();

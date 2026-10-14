@@ -49,11 +49,11 @@ img { display: block; max-width: 100%; }
 .hero-track, .hero-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
 .hero-track { display: flex; opacity: 0; transition: transform 950ms cubic-bezier(.65, 0, .35, 1), opacity 900ms ease; }
 .hero--ready .hero-track { opacity: 1; }
-.hero-slide { position: relative; flex: 0 0 100%; height: 100%; opacity: 1; }
+.hero-slide { position: relative; flex: 0 0 100%; height: 100%; opacity: 1; cursor: pointer; }
 .hero-slide > img, .lifestyle-slide > img { object-fit: cover; }
 .hero-slide .pimg { background: transparent; }
-.hero-shade { z-index: 1; background: transparent; }
-.hero-slide-link { position: absolute; inset: 0; display: block; }
+.hero-shade { z-index: 1; background: transparent; pointer-events: none; }
+.hero-slide-link { position: absolute; inset: 0; display: block; cursor: pointer; z-index: 2; }
 .eyebrow { display: block; font-size: 9px; font-weight: 600; letter-spacing: .16em; line-height: 1.5; }
 .light-button, .dark-button, .outline-button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 12px; padding: 0 21px; border: 0; font-size: 9px; font-weight: 700; letter-spacing: .11em; transition: background 160ms ease, color 160ms ease; }
 .light-button { background: #fff; color: var(--ink); }

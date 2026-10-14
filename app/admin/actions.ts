@@ -421,9 +421,9 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
     return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM)." };
   }
 
-  const maxBytes = 10 * 1024 * 1024; // 10MB
+  const maxBytes = 50 * 1024 * 1024; // 50MB (límite máximo de Supabase Storage)
   if (file.size > maxBytes) {
-    return { error: "El archivo supera el límite de 10 MB." };
+    return { error: "El archivo supera el límite de 50 MB permitido por la plataforma para multimedia." };
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "webp";

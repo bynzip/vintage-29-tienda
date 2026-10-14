@@ -190,7 +190,7 @@ export default function AdminHomeClient() {
         <div className="admin-gallery-heading">
           <div>
             <h2>Carrusel Principal (Hero Carousel)</h2>
-            <p>Imágenes y videos a pantalla completa en la portada. Puedes añadir títulos, cambiar el orden y definir el link del botón.</p>
+            <p>Imágenes y videos a pantalla completa en la portada. Cada slide es clickeable con efecto hover y redirige al enlace configurado (categoría, prenda, etc.).</p>
           </div>
           <button
             type="button"
@@ -199,9 +199,6 @@ export default function AdminHomeClient() {
               setEditingSlide({
                 media_url: "",
                 media_type: "image",
-                title: "",
-                subtitle: "",
-                button_label: "Descubrir",
                 href: "#productos",
                 sort_order: slides.length + 1,
                 is_active: true,
@@ -262,47 +259,18 @@ export default function AdminHomeClient() {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <label className="admin-field">
-                  Título (opcional)
-                  <input
-                    name="title"
-                    value={editingSlide.title ?? ""}
-                    placeholder="Ej. Nueva Temporada"
-                    onChange={(e) => setEditingSlide({ ...editingSlide, title: e.target.value })}
-                  />
-                </label>
-                <label className="admin-field">
-                  Subtítulo (opcional)
-                  <input
-                    name="subtitle"
-                    value={editingSlide.subtitle ?? ""}
-                    placeholder="Ej. Vintage 29"
-                    onChange={(e) => setEditingSlide({ ...editingSlide, subtitle: e.target.value })}
-                  />
-                </label>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <label className="admin-field">
-                  Texto del Botón
-                  <input
-                    name="button_label"
-                    value={editingSlide.button_label ?? ""}
-                    placeholder="Ej. Comprar ahora"
-                    onChange={(e) => setEditingSlide({ ...editingSlide, button_label: e.target.value })}
-                  />
-                </label>
-                <label className="admin-field">
-                  Link de Redirección (href)
-                  <input
-                    name="href"
-                    value={editingSlide.href ?? ""}
-                    placeholder="Ej. #productos o /products/cadera-pant-alana"
-                    onChange={(e) => setEditingSlide({ ...editingSlide, href: e.target.value })}
-                  />
-                </label>
-              </div>
+              <label className="admin-field">
+                Link de Redirección (al hacer clic en la portada) *
+                <input
+                  name="href"
+                  value={editingSlide.href ?? ""}
+                  placeholder="Ej. /products/cadera-pant-alana, /#productos o una URL externa"
+                  onChange={(e) => setEditingSlide({ ...editingSlide, href: e.target.value })}
+                />
+                <span style={{ fontSize: "10px", color: "#777", marginTop: "3px", display: "block" }}>
+                  Al hacer clic en cualquier lugar de esta imagen en la portada, el usuario será redirigido a este enlace.
+                </span>
+              </label>
 
               <label className="admin-lifestyle">
                 <input
@@ -348,12 +316,13 @@ export default function AdminHomeClient() {
                   <Image src={slide.media_url} alt="" fill sizes="70px" quality={50} style={{ objectFit: "cover" }} />
                 </div>
                 <div>
-                  <strong style={{ fontSize: "11px", display: "block" }}>{slide.title || "Sin título"}</strong>
-                  <span style={{ fontSize: "10px", color: "#666" }}>{slide.subtitle || "Sin subtítulo"}</span>
+                  <strong style={{ fontSize: "11px", display: "block" }}>Slide #{index + 1}</strong>
+                  <span style={{ fontSize: "10px", color: "#666" }}>
+                    Tipo: {slide.media_type === "video" ? "Video" : "Imagen"}
+                  </span>
                 </div>
                 <div style={{ fontSize: "10px", color: "#666" }}>
-                  <span>Botón: <strong>{slide.button_label || "Ninguno"}</strong></span>
-                  <span style={{ display: "block" }}>Link: {slide.href || "Ninguno"}</span>
+                  <span>Redirección: <strong style={{ color: "var(--ink)" }}>{slide.href || "#productos"}</strong></span>
                 </div>
                 <div style={{ display: "flex", gap: "4px" }}>
                   <button

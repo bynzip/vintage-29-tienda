@@ -129,11 +129,13 @@ export default function HeroCarousel({
               key={`${image.url}-${position}`}
               aria-hidden={position !== index}
             >
-              {image.href ? (
-                <Link className="hero-slide-link" href={image.href} aria-label={`Ver imagen ${position + 1}`}>
-                  {picture}
-                </Link>
-              ) : picture}
+              <Link
+                className="hero-slide-link"
+                href={image.href || "#productos"}
+                aria-label={`Ver imagen ${position + 1}`}
+              >
+                {picture}
+              </Link>
             </div>
           );
         })}
