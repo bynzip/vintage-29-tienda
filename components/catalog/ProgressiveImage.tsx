@@ -10,6 +10,8 @@ type ProgressiveImageProps = {
   sizes: string;
   eager?: boolean;
   quality?: number;
+  previewWidth?: number;
+  previewQuality?: number;
   onReady?: () => void;
 };
 
@@ -22,11 +24,13 @@ export default function ProgressiveImage({
   alt = "",
   sizes,
   eager = false,
-  quality = 78,
+  quality = 85,
+  previewWidth = 96,
+  previewQuality = 45,
   onReady,
 }: ProgressiveImageProps) {
   const [loaded, setLoaded] = useState(false);
-  const previewSrc = getImagePreviewUrl(src);
+  const previewSrc = getImagePreviewUrl(src, previewWidth, previewQuality);
 
   return (
     <span className="pimg pimg-progressive">

@@ -40,7 +40,9 @@ export default function ProductGallery({ product }: { product: CatalogProduct })
           src={active.url}
           alt={active.alt || product.name}
           sizes="(max-width: 640px) 100vw, min(68vw, 1000px)"
-          quality={78}
+          quality={85}
+          previewWidth={128}
+          previewQuality={50}
           eager
         />
         <span className="detail-image-count">

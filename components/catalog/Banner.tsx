@@ -14,7 +14,7 @@ export default function Banner({ image, title, buttonLabel, href }: BannerProps)
   return (
     <section className="home-banner" aria-label={title}>
       <div className="home-banner-image">
-        <Image src={image} alt="" fill sizes="100vw" quality={90} loading="lazy" />
+        <Image src={image} alt="" fill sizes="100vw" quality={95} loading="lazy" />
       </div>
       <div className="home-banner-shade" aria-hidden="true" />
       <div className="home-banner-content">

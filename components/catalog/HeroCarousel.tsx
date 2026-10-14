@@ -115,7 +115,9 @@ export default function HeroCarousel({
               src={image.url}
               sizes="100vw"
               alt=""
-              quality={90}
+              quality={95}
+              previewWidth={360}
+              previewQuality={60}
               eager={position === 0}
               onReady={position === 0 ? () => setReady(true) : undefined}
             />
