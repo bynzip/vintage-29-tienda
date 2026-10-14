@@ -15,6 +15,7 @@ type CatalogSourceRow = ProductRow & {
   subcategory?: { name: string } | null;
   fit?: { name: string } | null;
   product_colors?: Array<{
+    color_id?: string;
     position: number;
     color: { name: string; hex_color: string | null } | null;
   }>;
@@ -43,15 +44,28 @@ function mapProduct(
   compact = false,
 ): CatalogProduct {
   const availableAssets = cachedAvailableAssets();
+  const colorMap = new Map<string, string>();
+  for (const pc of product.product_colors ?? []) {
+    if (pc.color && pc.color_id) {
+      colorMap.set(pc.color_id, pc.color.name);
+    }
+  }
+
   const media = (product.product_media ?? [])
     .filter((item) => item.media_type === "image")
     .sort((a, b) => a.position - b.position)
-    .map((item) => ({
-      url: availableAssets.has(item.asset_path) ? item.asset_path : "",
-      order: item.position,
-      lifestyle: item.is_lifestyle,
-      alt: item.alt_text,
-    }));
+    .map((item) => {
+      const isRemote = item.asset_path.startsWith("http://") || item.asset_path.startsWith("https://");
+      const url = isRemote ? item.asset_path : (availableAssets.has(item.asset_path) ? item.asset_path : "");
+      return {
+        url,
+        order: item.position,
+        lifestyle: item.is_lifestyle,
+        alt: item.alt_text,
+        colorId: item.color_id ?? null,
+        colorName: item.color_id ? (colorMap.get(item.color_id) ?? null) : null,
+      };
+    });
   const availableMedia = media.filter((item) => item.url);
   const images = compact
     ? availableMedia.filter((item, index) => index < 2 || item.lifestyle)
@@ -102,8 +116,8 @@ const productSelect = `
   country_of_origin, status, is_featured, seo_title, seo_description,
   deleted_at, created_at, updated_at,
   legacy_category:categories!products_category_id_fkey(name),
-  product_media(id, product_id, asset_path, media_type, alt_text, position, is_primary, is_lifestyle, created_at, updated_at),
-  product_colors(position, color:colors!product_colors_color_id_fkey(name, hex_color)),
+  product_media(id, product_id, color_id, asset_path, media_type, alt_text, position, is_primary, is_lifestyle, created_at, updated_at),
+  product_colors(color_id, position, color:colors!product_colors_color_id_fkey(name, hex_color)),
   subcategory:categories!products_subcategory_id_fkey(name),
   product_variants(id, sku, variant_name, is_active, variant_prices(amount_cents, is_active))
 `;

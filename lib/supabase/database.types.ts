@@ -28,6 +28,7 @@ export type ProductRow = {
 export type ProductMediaRow = {
   id: string;
   product_id: string;
+  color_id: string | null;
   asset_path: string;
   media_type: "image" | "video";
   alt_text: string | null;
@@ -144,6 +145,49 @@ export type BrandRow = { id: string; name: string; slug: string; logo_path: stri
 export type PriceListRow = { id: string; name: string; currency: string; country_code: string; sales_channel: string; customer_group: string; is_active: boolean; created_at: string; updated_at: string };
 export type WarehouseRow = { id: string; name: string; code: string; is_active: boolean; created_at: string; updated_at: string };
 
+export type HomeSlideRow = {
+  id: string;
+  title: string | null;
+  subtitle: string | null;
+  media_type: "image" | "video";
+  media_url: string;
+  button_label: string | null;
+  href: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HomeBannerRow = {
+  id: string;
+  identifier: string;
+  title: string;
+  subtitle: string | null;
+  button_label: string;
+  href: string;
+  image_url: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MediaAssetRow = {
+  id: string;
+  bucket_id: string;
+  file_path: string;
+  public_url: string;
+  file_name: string;
+  content_type: string | null;
+  file_size_bytes: number | null;
+  created_at: string;
+};
+
+export type ViewMediaUsageRow = MediaAssetRow & {
+  usage_count: number;
+  used_in_products: string[];
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
   Row: Row;
   Insert: Insert;
@@ -182,6 +226,9 @@ type PublicTables = {
   size_charts: Table<Record<string, unknown>>;
   size_chart_rows: Table<Record<string, unknown>>;
   size_measurements: Table<Record<string, unknown>>;
+  home_slides: Table<HomeSlideRow>;
+  home_banners: Table<HomeBannerRow>;
+  media_assets: Table<MediaAssetRow>;
 };
 
 export type Database = {
@@ -190,6 +237,10 @@ export type Database = {
     Views: {
       public_variant_availability: {
         Row: { variant_id: string; is_available: boolean };
+        Relationships: [];
+      };
+      view_media_usage: {
+        Row: ViewMediaUsageRow;
         Relationships: [];
       };
     };

@@ -9,11 +9,21 @@
 -- 1) Material como texto simple en products.
 alter table public.products add column if not exists material_summary text;
 
-update public.products as product
-set material_summary = material.name
-from public.materials as material
-where product.material_id = material.id
-  and product.material_summary is null;
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'products' and column_name = 'material_id'
+  ) then
+    execute '
+      update public.products as product
+      set material_summary = material.name
+      from public.materials as material
+      where product.material_id = material.id
+        and product.material_summary is null
+    ';
+  end if;
+end $$;
 
 alter table public.products drop column if exists material_id;
 

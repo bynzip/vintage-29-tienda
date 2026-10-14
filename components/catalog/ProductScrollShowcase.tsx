@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Heart } from "lucide-react";
 import type { Ref } from "react";
@@ -82,7 +82,19 @@ function ProductStripImage({
 }
 
 export default function ProductScrollShowcase({ product }: { product: CatalogProduct }) {
-  const images = product.images.filter((image) => image.url);
+  const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? "");
+  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? "");
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  const allImages = useMemo(() => product.images.filter((image) => image.url), [product.images]);
+  const images = useMemo(() => {
+    if (!selectedColor) return allImages;
+    const filtered = allImages.filter(
+      (img) => !img.colorName || img.colorName.toLowerCase() === selectedColor.toLowerCase()
+    );
+    return filtered.length > 0 ? filtered : allImages;
+  }, [allImages, selectedColor]);
+
   const repeatedImages = images.length > 1
     ? [...images, ...images, ...images]
     : images.length === 1
@@ -98,9 +110,11 @@ export default function ProductScrollShowcase({ product }: { product: CatalogPro
   const frameRef = useRef<number | null>(null);
   const mobileStartRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? "");
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? "");
-  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    mobileStartRef.current = null;
+  }, [selectedColor]);
 
   const updateTrack = useCallback(() => {
     if (frameRef.current !== null) return;

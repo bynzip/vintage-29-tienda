@@ -7,6 +7,13 @@ const nextConfig = {
     minimumCacheTTL: 86400,
     deviceSizes: [360, 640, 768, 1024, 1280, 1600, 1920, 2560],
     imageSizes: [48, 64, 96, 128, 256],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
   },
 };
 

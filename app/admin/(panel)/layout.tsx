@@ -20,6 +20,8 @@ export default async function AdminPanelLayout({ children }: { children: React.R
           <Link href="/admin/colors">COLORES</Link>
           <Link href="/admin/sizes">TALLAS</Link>
           <Link href="/admin/fits">FIT</Link>
+          <Link href="/admin/home">PORTADA</Link>
+          <Link href="/admin/media">MEDIOS</Link>
           <Link href="/">VER TIENDA</Link>
           <form action={signOutAction}><button type="submit">CERRAR SESIÓN</button></form>
         </nav>

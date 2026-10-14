@@ -5,6 +5,8 @@ export type CatalogImage = {
   order: number;
   lifestyle: boolean;
   alt: string | null;
+  colorId?: string | null;
+  colorName?: string | null;
 };
 
 export type CatalogProduct = {

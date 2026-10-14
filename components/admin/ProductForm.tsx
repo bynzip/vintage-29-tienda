@@ -3,13 +3,13 @@
 import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
-import { saveProductAction, type ProductActionState } from "@/app/admin/actions";
+import { ArrowDown, ArrowUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { saveProductAction, uploadMediaAction, type ProductActionState } from "@/app/admin/actions";
 import { buildVariantCombinations, type VariantDraft } from "@/lib/admin/variant-combinations";
 
 type CatalogValue = { id: string; name: string; slug: string; sort_order: number; hex_color?: string | null };
 type ProductVariant = VariantDraft;
-type ProductMedia = { id: string; asset_path: string; alt_text: string; position: number; is_primary: boolean; is_lifestyle: boolean };
+type ProductMedia = { id: string; color_id?: string | null; asset_path: string; alt_text: string; position: number; is_primary: boolean; is_lifestyle: boolean };
 export type AdminCatalogProduct = {
   id: string;
   name: string;
@@ -82,6 +82,9 @@ export default function ProductForm({
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [media, setMedia] = useState<ProductMedia[]>(product.media);
   const [selectedAsset, setSelectedAsset] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [removalRequest, setRemovalRequest] = useState<RemovalRequest | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveRemovalConfirmed, setSaveRemovalConfirmed] = useState(false);
@@ -203,9 +206,55 @@ export default function ProductForm({
     setVariants((current) => current.map((variant, itemIndex) => itemIndex === index ? { ...variant, ...update } : variant));
   }
 
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("folder", slug || "products");
+      const res = await uploadMediaAction(formData);
+      if (res.error || !res.publicUrl) {
+        setUploadError(res.error || "No se pudo subir la imagen.");
+      } else {
+        const newAsset = res.publicUrl;
+        setMedia((current) => [
+          ...current,
+          {
+            id: newId(),
+            color_id: null,
+            asset_path: newAsset,
+            alt_text: name,
+            position: current.length,
+            is_primary: current.length === 0,
+            is_lifestyle: false,
+          },
+        ]);
+      }
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Error al subir la imagen.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function addMedia() {
     if (!selectedAsset || media.some((item) => item.asset_path === selectedAsset)) return;
-    setMedia((current) => [...current, { id: newId(), asset_path: selectedAsset, alt_text: name, position: current.length, is_primary: current.length === 0, is_lifestyle: false }]);
+    setMedia((current) => [
+      ...current,
+      {
+        id: newId(),
+        color_id: null,
+        asset_path: selectedAsset,
+        alt_text: name,
+        position: current.length,
+        is_primary: current.length === 0,
+        is_lifestyle: false,
+      },
+    ]);
   }
 
   return (
@@ -268,15 +317,180 @@ export default function ProductForm({
       </section>
 
       <section className="admin-form-section">
-        <div className="admin-gallery-heading"><div><h2>Galería del producto</h2><p>Estas imágenes son generales. Más adelante pueden asociarse también a una variante.</p></div><span>{media.length} seleccionadas</span></div>
-        <div className="admin-add-image"><select aria-label="Seleccionar imagen" value={selectedAsset} onChange={(event) => setSelectedAsset(event.currentTarget.value)}><option value="">Elegir archivo…</option>{assets.filter((asset) => !media.some((item) => item.asset_path === asset)).map((asset) => <option key={asset} value={asset}>{asset}</option>)}</select><button type="button" className="outline-button" onClick={addMedia} disabled={!selectedAsset}><Plus size={15} /> AÑADIR IMAGEN</button></div>
-         {media.length ? <ol className="admin-gallery-list">{media.map((item, index) => <li key={item.id}><div className="admin-gallery-thumb"><Image src={item.asset_path} alt="" fill sizes="58px" quality={58} /></div><div className="admin-gallery-file"><strong>{String(index + 1).padStart(2, "0")}</strong><span>{item.asset_path}</span></div><label className="admin-gallery-alt">Alt<input value={item.alt_text} onChange={(event) => {
-           const value = event.currentTarget.value;
-           setMedia((current) => current.map((mediaItem) => mediaItem.id === item.id ? { ...mediaItem, alt_text: value } : mediaItem));
-         }} /></label><label className="admin-lifestyle"><input type="checkbox" checked={item.is_lifestyle} onChange={(event) => {
-           const checked = event.currentTarget.checked;
-           setMedia((current) => current.map((mediaItem) => mediaItem.id === item.id ? { ...mediaItem, is_lifestyle: checked } : mediaItem));
-         }} /> Lifestyle</label><div className="admin-gallery-actions"><button type="button" aria-label="Subir imagen" disabled={index === 0} onClick={() => setMedia((current) => { const next = [...current]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; return next.map((mediaItem, position) => ({ ...mediaItem, position })); })}><ArrowUp size={15} /></button><button type="button" aria-label="Bajar imagen" disabled={index === media.length - 1} onClick={() => setMedia((current) => { const next = [...current]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; return next.map((mediaItem, position) => ({ ...mediaItem, position })); })}><ArrowDown size={15} /></button><button type="button" aria-label="Quitar imagen" onClick={() => setMedia((current) => current.filter((mediaItem) => mediaItem.id !== item.id).map((mediaItem, position) => ({ ...mediaItem, position })))}><Trash2 size={15} /></button></div></li>)}</ol> : <p className="admin-gallery-empty">Este producto todavía no tiene imágenes.</p>}
+        <div className="admin-gallery-heading">
+          <div>
+            <h2>Galería del producto</h2>
+            <p>Sube imágenes a la nube o selecciona existentes. Puedes asociar cada foto a un color específico o mostrarla para todos los colores.</p>
+          </div>
+          <span>{media.length} seleccionadas</span>
+        </div>
+
+        {uploadError && <p className="admin-alert" role="alert">{uploadError}</p>}
+
+        <div className="admin-add-image" style={{ flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+          />
+          <button
+            type="button"
+            className="outline-button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader2 className="animate-spin" size={15} /> : <Upload size={15} />}
+            {isUploading ? "SUBIENDO A LA NUBE…" : "SUBIR FOTO A LA NUBE"}
+          </button>
+
+          {assets.length > 0 && (
+            <>
+              <select
+                aria-label="Seleccionar imagen local"
+                value={selectedAsset}
+                onChange={(event) => setSelectedAsset(event.currentTarget.value)}
+              >
+                <option value="">O elegir existente…</option>
+                {assets
+                  .filter((asset) => !media.some((item) => item.asset_path === asset))
+                  .map((asset) => (
+                    <option key={asset} value={asset}>
+                      {asset}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                className="outline-button"
+                onClick={addMedia}
+                disabled={!selectedAsset}
+              >
+                <Plus size={15} /> AÑADIR
+              </button>
+            </>
+          )}
+        </div>
+        {media.length ? (
+          <ol className="admin-gallery-list">
+            {media.map((item, index) => (
+              <li key={item.id}>
+                <div className="admin-gallery-thumb">
+                  <Image
+                    src={item.asset_path}
+                    alt=""
+                    fill
+                    sizes="58px"
+                    quality={58}
+                    unoptimized={item.asset_path.endsWith(".mp4") || item.asset_path.endsWith(".webm")}
+                  />
+                </div>
+                <div className="admin-gallery-file">
+                  <strong>{String(index + 1).padStart(2, "0")}</strong>
+                  <span title={item.asset_path}>{item.asset_path.split("/").pop()}</span>
+                </div>
+                <label className="admin-gallery-alt">
+                  Alt
+                  <input
+                    value={item.alt_text}
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setMedia((current) =>
+                        current.map((mediaItem) =>
+                          mediaItem.id === item.id ? { ...mediaItem, alt_text: value } : mediaItem
+                        )
+                      );
+                    }}
+                  />
+                </label>
+                <label className="admin-gallery-color">
+                  <span style={{ fontSize: "9px", color: "#777", display: "block", marginBottom: "3px" }}>Color</span>
+                  <select
+                    aria-label={`Color para imagen ${index + 1}`}
+                    value={item.color_id ?? ""}
+                    onChange={(event) => {
+                      const val = event.currentTarget.value || null;
+                      setMedia((current) =>
+                        current.map((mediaItem) =>
+                          mediaItem.id === item.id ? { ...mediaItem, color_id: val } : mediaItem
+                        )
+                      );
+                    }}
+                    style={{ minHeight: "34px", padding: "6px", fontSize: "11px", border: "1px solid #dedbd6", background: "#fff" }}
+                  >
+                    <option value="">Todos los colores</option>
+                    {selectedColorIds.map((cid) => (
+                      <option key={cid} value={cid}>
+                        Solo {colorNames.get(cid) ?? "Color"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="admin-lifestyle">
+                  <input
+                    type="checkbox"
+                    checked={item.is_lifestyle}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setMedia((current) =>
+                        current.map((mediaItem) =>
+                          mediaItem.id === item.id ? { ...mediaItem, is_lifestyle: checked } : mediaItem
+                        )
+                      );
+                    }}
+                  />{" "}
+                  Lifestyle
+                </label>
+                <div className="admin-gallery-actions">
+                  <button
+                    type="button"
+                    aria-label="Subir imagen"
+                    disabled={index === 0}
+                    onClick={() =>
+                      setMedia((current) => {
+                        const next = [...current];
+                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                        return next.map((mediaItem, position) => ({ ...mediaItem, position }));
+                      })
+                    }
+                  >
+                    <ArrowUp size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Bajar imagen"
+                    disabled={index === media.length - 1}
+                    onClick={() =>
+                      setMedia((current) => {
+                        const next = [...current];
+                        [next[index], next[index + 1]] = [next[index + 1], next[index]];
+                        return next.map((mediaItem, position) => ({ ...mediaItem, position }));
+                      })
+                    }
+                  >
+                    <ArrowDown size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Quitar imagen"
+                    onClick={() =>
+                      setMedia((current) =>
+                        current
+                          .filter((mediaItem) => mediaItem.id !== item.id)
+                          .map((mediaItem, position) => ({ ...mediaItem, position }))
+                      )
+                    }
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="admin-gallery-empty">Este producto todavía no tiene imágenes.</p>
+        )}
       </section>
 
       <div className="admin-form-footer">

@@ -157,7 +157,12 @@ export async function saveProductAction(
     return { error: "No repitas colores ni tallas en el producto." };
   }
   const availablePaths = new Set(getImageAssetPaths());
-  if (media.some((item) => !item || typeof item !== "object" || !availablePaths.has(String(item.asset_path)))) {
+  if (media.some((item) => {
+    if (!item || typeof item !== "object") return true;
+    const path = String((item as Record<string, unknown>).asset_path ?? "");
+    if (path.startsWith("http://") || path.startsWith("https://")) return false;
+    return !availablePaths.has(path);
+  })) {
     return { error: "Una de las imágenes seleccionadas no existe en el catálogo de archivos." };
   }
   if (parsed.data.status === "published") {
@@ -392,3 +397,171 @@ export async function deleteCatalogValueAction(
   revalidateTag("catalog");
   return { success: true, affectedProducts: Number(data ?? 0) };
 }
+
+export type UploadMediaResult = {
+  success?: boolean;
+  error?: string;
+  publicUrl?: string;
+  filePath?: string;
+  fileName?: string;
+};
+
+export async function uploadMediaAction(formData: FormData): Promise<UploadMediaResult> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "Tu sesión no tiene permisos de administrador." };
+
+  const file = formData.get("file");
+  if (!file || !(file instanceof File)) {
+    return { error: "No se proporcionó ningún archivo válido." };
+  }
+
+  const folder = String(formData.get("folder") ?? "products").trim().replace(/[^a-z0-9_-]/gi, "");
+  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"];
+  if (!allowedMime.includes(file.type)) {
+    return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM)." };
+  }
+
+  const maxBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxBytes) {
+    return { error: "El archivo supera el límite de 10 MB." };
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
+  const safeName = file.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const uniquePrefix = `${Date.now()}-${randomUUID().slice(0, 6)}`;
+  const filePath = `${folder}/${uniquePrefix}-${safeName}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await supabase.storage.from("catalog-media").upload(filePath, buffer, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (uploadError) {
+    return { error: `Error al subir archivo a Storage: ${uploadError.message}` };
+  }
+
+  const { data: urlData } = supabase.storage.from("catalog-media").getPublicUrl(filePath);
+  const publicUrl = urlData.publicUrl;
+
+  await supabase.from("media_assets").insert({
+    bucket_id: "catalog-media",
+    file_path: filePath,
+    public_url: publicUrl,
+    file_name: file.name,
+    content_type: file.type,
+    file_size_bytes: file.size,
+  });
+
+  revalidatePath("/admin/media");
+  return {
+    success: true,
+    publicUrl,
+    filePath,
+    fileName: file.name,
+  };
+}
+
+export async function deleteMediaAssetAction(id: string, filePath: string): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  if (filePath) {
+    await supabase.storage.from("catalog-media").remove([filePath]);
+  }
+  if (id) {
+    await supabase.from("media_assets").delete().eq("id", id);
+  }
+
+  revalidatePath("/admin/media");
+  return { success: true };
+}
+
+export async function saveHomeSlideAction(formData: FormData): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const id = String(formData.get("id") ?? "").trim() || undefined;
+  const title = String(formData.get("title") ?? "").trim() || null;
+  const subtitle = String(formData.get("subtitle") ?? "").trim() || null;
+  const media_url = String(formData.get("media_url") ?? "").trim();
+  const media_type = (String(formData.get("media_type") ?? "image") as "image" | "video") || "image";
+  const button_label = String(formData.get("button_label") ?? "").trim() || null;
+  const href = String(formData.get("href") ?? "").trim() || null;
+  const sort_order = Number(formData.get("sort_order") ?? 0);
+  const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
+
+  if (!media_url) return { error: "Debes asignar una imagen o video al slide." };
+
+  const payload = {
+    title,
+    subtitle,
+    media_url,
+    media_type,
+    button_label,
+    href,
+    sort_order,
+    is_active,
+  };
+
+  if (id) {
+    const { error } = await supabase.from("home_slides").update(payload).eq("id", id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase.from("home_slides").insert(payload);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  return { success: true };
+}
+
+export async function deleteHomeSlideAction(id: string): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const { error } = await supabase.from("home_slides").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  return { success: true };
+}
+
+export async function saveHomeBannerAction(formData: FormData): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const identifier = String(formData.get("identifier") ?? "main_promo").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const subtitle = String(formData.get("subtitle") ?? "").trim() || null;
+  const button_label = String(formData.get("button_label") ?? "Comprar ahora").trim();
+  const href = String(formData.get("href") ?? "#productos").trim();
+  const image_url = String(formData.get("image_url") ?? "").trim();
+  const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
+
+  if (!title || !image_url) return { error: "El banner requiere al menos título e imagen." };
+
+  const { error } = await supabase.from("home_banners").upsert({
+    identifier,
+    title,
+    subtitle,
+    button_label,
+    href,
+    image_url,
+    is_active,
+  }, { onConflict: "identifier" });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  return { success: true };
+}
+

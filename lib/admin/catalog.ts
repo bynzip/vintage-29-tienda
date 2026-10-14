@@ -78,7 +78,7 @@ export async function getCatalogEditorData(
       .eq("id", productId)
       .maybeSingle(),
     supabase.from("product_variants").select("id, color_id, size_id, sku, variant_name, position, is_active").eq("product_id", productId).order("position"),
-    supabase.from("product_media").select("id, asset_path, alt_text, position, is_primary, is_lifestyle").eq("product_id", productId).order("position"),
+    supabase.from("product_media").select("id, color_id, asset_path, alt_text, position, is_primary, is_lifestyle").eq("product_id", productId).order("position"),
     supabase.from("product_colors").select("color_id, position").eq("product_id", productId).order("position"),
     supabase.from("product_sizes").select("size_id, position").eq("product_id", productId).order("position"),
   ]);

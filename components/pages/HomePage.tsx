@@ -1,39 +1,24 @@
-import productSource from "@/productos.json";
 import { getPublishedProducts } from "@/lib/catalog/products";
-import type { HeroImage } from "@/lib/catalog/types";
+import { getHomeData } from "@/lib/catalog/home";
 import CatalogGrid from "@/components/catalog/CatalogGrid";
 import Banner from "@/components/catalog/Banner";
-import CampaignMosaic from "@/components/catalog/CampaignMosaic";
-import CouponBanner from "@/components/catalog/CouponBanner";
 import HeroCarousel from "@/components/catalog/HeroCarousel";
 import HomeHeaderController from "@/components/catalog/HomeHeaderController";
 import LifestyleCarousel from "@/components/catalog/LifestyleCarousel";
 import ProductCarousel from "@/components/catalog/ProductCarousel";
 import ProductGrid from "@/components/catalog/ProductGrid";
-import SocialMediaSection from "@/components/catalog/SocialMediaSection";
-
-const heroImages: HeroImage[] = productSource.portada.map((image) => ({
-  url: `/${image.ruta}`,
-  order: image.orden,
-  href:
-    "href" in image && typeof image.href === "string" ? image.href : undefined,
-}));
-
-function getPortadaImage(index: number) {
-  return heroImages.length
-    ? (heroImages[index % heroImages.length]?.url ?? "")
-    : "";
-}
 
 export default async function HomePage() {
-  const catalog = await getPublishedProducts();
-  const bannerImage = heroImages[1]?.url ?? heroImages[0]?.url ?? "";
+  const [catalog, home] = await Promise.all([
+    getPublishedProducts(),
+    getHomeData(),
+  ]);
 
   return (
     <div className="home-page">
       <HomeHeaderController />
       <div className="hero-scroll-stage">
-        <HeroCarousel hero={heroImages} />
+        <HeroCarousel hero={home.slides} />
       </div>
 
       <div className="home-overlay-content">
@@ -80,12 +65,14 @@ export default async function HomePage() {
         <br />
         <br />
 
-        <Banner
-          image={bannerImage}
-          title="Blouses Collection"
-          buttonLabel="Comprar ahora"
-          href="#productos"
-        />
+        {home.banner.imageUrl && (
+          <Banner
+            image={home.banner.imageUrl}
+            title={home.banner.title}
+            buttonLabel={home.banner.buttonLabel}
+            href={home.banner.href}
+          />
+        )}
       </div>
     </div>
   );
