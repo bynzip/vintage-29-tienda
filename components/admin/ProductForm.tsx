@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { GripVertical, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { saveProductAction, uploadMediaAction, type ProductActionState } from "@/app/admin/actions";
 import { buildVariantCombinations, type VariantDraft } from "@/lib/admin/variant-combinations";
 
@@ -84,6 +84,8 @@ export default function ProductForm({
   const [selectedAsset, setSelectedAsset] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [removalRequest, setRemovalRequest] = useState<RemovalRequest | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -375,7 +377,46 @@ export default function ProductForm({
         {media.length ? (
           <ol className="admin-gallery-list">
             {media.map((item, index) => (
-              <li key={item.id}>
+              <li
+                key={item.id}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedIndex(index);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dragOverIndex !== index) setDragOverIndex(index);
+                }}
+                onDragLeave={() => {
+                  if (dragOverIndex === index) setDragOverIndex(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverIndex(null);
+                  if (draggedIndex === null || draggedIndex === index) return;
+                  setMedia((current) => {
+                    const next = [...current];
+                    const [dragged] = next.splice(draggedIndex, 1);
+                    next.splice(index, 0, dragged);
+                    return next.map((mediaItem, position) => ({
+                      ...mediaItem,
+                      position,
+                      is_primary: position === 0,
+                    }));
+                  });
+                  setDraggedIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedIndex(null);
+                  setDragOverIndex(null);
+                }}
+                className={`${draggedIndex === index ? "is-dragging" : ""} ${dragOverIndex === index ? "is-drag-over" : ""}`}
+              >
+                <div className="admin-drag-handle" title="Arrastra para reordenar la foto">
+                  <GripVertical size={16} />
+                </div>
                 <div className="admin-gallery-thumb">
                   <Image
                     src={item.asset_path}
@@ -443,34 +484,6 @@ export default function ProductForm({
                   Lifestyle
                 </label>
                 <div className="admin-gallery-actions">
-                  <button
-                    type="button"
-                    aria-label="Subir imagen"
-                    disabled={index === 0}
-                    onClick={() =>
-                      setMedia((current) => {
-                        const next = [...current];
-                        [next[index - 1], next[index]] = [next[index], next[index - 1]];
-                        return next.map((mediaItem, position) => ({ ...mediaItem, position }));
-                      })
-                    }
-                  >
-                    <ArrowUp size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Bajar imagen"
-                    disabled={index === media.length - 1}
-                    onClick={() =>
-                      setMedia((current) => {
-                        const next = [...current];
-                        [next[index], next[index + 1]] = [next[index + 1], next[index]];
-                        return next.map((mediaItem, position) => ({ ...mediaItem, position }));
-                      })
-                    }
-                  >
-                    <ArrowDown size={15} />
-                  </button>
                   <button
                     type="button"
                     aria-label="Quitar imagen"
