@@ -13,11 +13,22 @@ const SNAP_DELAY_MS = 40;
 type Slide = { slug: string; image: string; subcategory: string | null };
 
 function toSlides(products: CatalogProduct[]): Slide[] {
-  return products
+  const withLifestyle = products
     .map((product) => {
       const lifestyle = product.images.find((image) => image.lifestyle);
       if (!lifestyle) return null;
       return { slug: product.slug, image: lifestyle.url, subcategory: product.category };
+    })
+    .filter((slide): slide is Slide => slide !== null);
+
+  if (withLifestyle.length > 0) return withLifestyle;
+
+  return products
+    .slice(0, 8)
+    .map((product) => {
+      const img = product.images[0];
+      if (!img) return null;
+      return { slug: product.slug, image: img.url, subcategory: product.category };
     })
     .filter((slide): slide is Slide => slide !== null);
 }
@@ -119,7 +130,17 @@ export default function LifestyleCarousel({ products }: { products: CatalogProdu
   const transform = `translateX(calc(-${100 / visibleSlides}% * ${index}))`;
 
   return (
-    <section className="lifestyle-section" aria-label="Colección en uso">
+    <section className="lifestyle-section" aria-label="Consigue tu estilo">
+      <div className="page-gutter">
+        <div className="section-heading lifestyle-heading">
+          <div>
+            <span className="eyebrow">INSPIRACIÓN & OUTFITS</span>
+            <h2>
+              Consigue tu estilo<span className="coral-dot">.</span>
+            </h2>
+          </div>
+        </div>
+      </div>
       <div className="lifestyle-viewport">
         <div
           className="lifestyle-track"

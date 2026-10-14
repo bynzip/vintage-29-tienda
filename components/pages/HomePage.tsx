@@ -3,7 +3,6 @@ import { getHomeData } from "@/lib/catalog/home";
 import CatalogGrid from "@/components/catalog/CatalogGrid";
 import Banner from "@/components/catalog/Banner";
 import HeroCarousel from "@/components/catalog/HeroCarousel";
-import HomeHeaderController from "@/components/catalog/HomeHeaderController";
 import LifestyleCarousel from "@/components/catalog/LifestyleCarousel";
 import ProductCarousel from "@/components/catalog/ProductCarousel";
 import ProductGrid from "@/components/catalog/ProductGrid";
@@ -16,7 +15,6 @@ export default async function HomePage() {
 
   return (
     <div className="home-page">
-      <HomeHeaderController />
       <div className="hero-scroll-stage">
         <HeroCarousel hero={home.slides} />
       </div>
