@@ -59,7 +59,7 @@ export default function ProductForm({
   colors: CatalogValue[];
   sizes: CatalogValue[];
   fits: CatalogValue[];
-  assets: string[];
+  assets: Array<string | { path: string; label: string }>;
   priceListId: string;
   warehouseId: string;
 }) {
@@ -97,6 +97,15 @@ export default function ProductForm({
   const colorNames = useMemo(() => new Map(colors.map((color) => [color.id, color.name])), [colors]);
   const sizeNames = useMemo(() => new Map(sizes.map((size) => [size.id, size.name])), [sizes]);
   const colorOptions = useMemo(() => new Map(colors.map((color) => [color.id, color])), [colors]);
+  const normalizedAssets = useMemo(() => {
+    return (assets ?? []).map((a) => {
+      if (typeof a === "string") {
+        const filename = a.split("/").pop() || a;
+        return { path: a, label: filename };
+      }
+      return a;
+    });
+  }, [assets]);
 
   // Las combinaciones de variantes se regeneran solas cada vez que cambian los
   // colores o las tallas, conservando SKU, precio, stock y estado de las
@@ -347,19 +356,19 @@ export default function ProductForm({
             {isUploading ? "SUBIENDO A LA NUBE…" : "SUBIR FOTO A LA NUBE"}
           </button>
 
-          {assets.length > 0 && (
+          {normalizedAssets.length > 0 && (
             <>
               <select
-                aria-label="Seleccionar imagen local"
+                aria-label="Seleccionar imagen existente"
                 value={selectedAsset}
                 onChange={(event) => setSelectedAsset(event.currentTarget.value)}
               >
                 <option value="">O elegir existente…</option>
-                {assets
-                  .filter((asset) => !media.some((item) => item.asset_path === asset))
+                {normalizedAssets
+                  .filter((asset) => !media.some((item) => item.asset_path === asset.path))
                   .map((asset) => (
-                    <option key={asset} value={asset}>
-                      {asset}
+                    <option key={asset.path} value={asset.path}>
+                      {asset.label}
                     </option>
                   ))}
               </select>
@@ -414,9 +423,6 @@ export default function ProductForm({
                 }}
                 className={`${draggedIndex === index ? "is-dragging" : ""} ${dragOverIndex === index ? "is-drag-over" : ""}`}
               >
-                <div className="admin-drag-handle" title="Arrastra para reordenar la foto">
-                  <GripVertical size={16} />
-                </div>
                 <div className="admin-gallery-thumb">
                   <Image
                     src={item.asset_path}
@@ -497,6 +503,9 @@ export default function ProductForm({
                   >
                     <Trash2 size={15} />
                   </button>
+                  <div className="admin-drag-handle" title="Arrastra para reordenar la foto">
+                    <GripVertical size={16} />
+                  </div>
                 </div>
               </li>
             ))}

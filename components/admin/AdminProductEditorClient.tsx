@@ -13,7 +13,7 @@ export default function AdminProductEditorClient({
   assets,
 }: {
   productId?: string;
-  assets: string[];
+  assets: Array<string | { path: string; label: string }>;
 }) {
   const userId = useAdminUserId();
   const cacheKey = `admin:${userId}:editor:${productId ?? "new"}`;

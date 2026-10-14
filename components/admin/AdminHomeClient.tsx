@@ -163,11 +163,12 @@ export default function AdminHomeClient() {
   }
 
   return (
-    <div className="admin-catalog-page">
-      <div className="admin-catalog-heading">
+    <main className="admin-content">
+      <div className="admin-page-heading">
         <div>
           <span className="eyebrow">PORTADA Y LANDING</span>
           <h1>Configuración del Inicio</h1>
+          <p>Administra los slides del carrusel principal y el banner promocional de la tienda.</p>
         </div>
       </div>
 
@@ -514,6 +515,6 @@ export default function AdminHomeClient() {
           </form>
         )}
       </section>
-    </div>
+    </main>
   );
 }

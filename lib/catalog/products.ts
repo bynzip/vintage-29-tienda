@@ -221,3 +221,39 @@ function getImageAssetPathsUncached(directory = path.join(process.cwd(), "public
   if (existsSync(directory)) walk(directory);
   return paths.sort((a, b) => a.localeCompare(b, "es"));
 }
+
+export type AvailableAsset = {
+  path: string;
+  label: string;
+};
+
+export async function getAvailableMediaAssets(): Promise<AvailableAsset[]> {
+  try {
+    const supabase = await createSupabasePublicClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from("media_assets")
+        .select("public_url, file_name, file_path")
+        .order("created_at", { ascending: false });
+
+      if (data && data.length > 0) {
+        return data.map((item) => {
+          const folder = item.file_path && item.file_path.includes("/")
+            ? item.file_path.split("/").slice(0, -1).join("/")
+            : "";
+          return {
+            path: item.public_url,
+            label: folder ? `${item.file_name} (${folder})` : item.file_name,
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching media_assets from Supabase:", err);
+  }
+
+  return getImageAssetPaths().map((p) => ({
+    path: p,
+    label: p.split("/").pop() || p,
+  }));
+}
