@@ -1,4 +1,9 @@
-export type HeroImage = { url: string; order: number; href?: string };
+export type HeroImage = {
+  url: string;
+  order: number;
+  href?: string;
+  mediaType?: "image" | "video";
+};
 
 export type CatalogImage = {
   url: string;

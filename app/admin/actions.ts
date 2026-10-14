@@ -416,14 +416,14 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
   }
 
   const folder = String(formData.get("folder") ?? "products").trim().replace(/[^a-z0-9_-]/gi, "");
-  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"];
+  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime"];
   if (!allowedMime.includes(file.type)) {
-    return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM)." };
+    return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM, MOV)." };
   }
 
-  const maxBytes = 50 * 1024 * 1024; // 50MB (límite máximo de Supabase Storage)
+  const maxBytes = 100 * 1024 * 1024; // 100MB
   if (file.size > maxBytes) {
-    return { error: "El archivo supera el límite de 50 MB permitido por la plataforma para multimedia." };
+    return { error: "El archivo supera el límite de 100 MB permitido para multimedia." };
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
@@ -490,7 +490,9 @@ export async function saveHomeSlideAction(formData: FormData): Promise<{ success
   const title = String(formData.get("title") ?? "").trim() || null;
   const subtitle = String(formData.get("subtitle") ?? "").trim() || null;
   const media_url = String(formData.get("media_url") ?? "").trim();
-  const media_type = (String(formData.get("media_type") ?? "image") as "image" | "video") || "image";
+  const isVideoExt = /\.(mp4|mov|webm)(\?.*)?$/i.test(media_url);
+  const rawMediaType = String(formData.get("media_type") ?? "").trim();
+  const media_type: "image" | "video" = (rawMediaType === "video" || isVideoExt) ? "video" : "image";
   const button_label = String(formData.get("button_label") ?? "").trim() || null;
   const href = String(formData.get("href") ?? "").trim() || null;
   const sort_order = Number(formData.get("sort_order") ?? 0);

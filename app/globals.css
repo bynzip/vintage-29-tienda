@@ -50,7 +50,8 @@ img { display: block; max-width: 100%; }
 .hero-track { display: flex; opacity: 0; transition: transform 950ms cubic-bezier(.65, 0, .35, 1), opacity 900ms ease; }
 .hero--ready .hero-track { opacity: 1; }
 .hero-slide { position: relative; flex: 0 0 100%; height: 100%; opacity: 1; cursor: pointer; }
-.hero-slide > img, .lifestyle-slide > img { object-fit: cover; }
+.hero-slide > img, .hero-slide > video, .lifestyle-slide > img { object-fit: cover; }
+.hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .hero-slide .pimg { background: transparent; }
 .hero-shade { z-index: 1; background: transparent; pointer-events: none; }
 .hero-slide-link { position: absolute; inset: 0; display: block; cursor: pointer; z-index: 2; }

@@ -61,6 +61,7 @@ export default function AdminHomeClient() {
   async function handleSlideFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const isVideo = file.type.startsWith("video") || /\.(mp4|mov|webm)$/i.test(file.name);
     setUploadingSlide(true);
     try {
       const formData = new FormData();
@@ -73,7 +74,7 @@ export default function AdminHomeClient() {
         setEditingSlide((prev) => ({
           ...prev,
           media_url: res.publicUrl,
-          media_type: file.type.startsWith("video") ? "video" : "image",
+          media_type: isVideo ? "video" : "image",
         }));
       }
     } finally {
@@ -237,7 +238,7 @@ export default function AdminHomeClient() {
                   <input
                     ref={slideFileInputRef}
                     type="file"
-                    accept="image/*,video/*"
+                    accept="image/*,video/*,video/mp4,video/webm,video/quicktime,.mov"
                     onChange={handleSlideFileUpload}
                     style={{ display: "none" }}
                   />
@@ -254,8 +255,19 @@ export default function AdminHomeClient() {
               </div>
 
               {editingSlide.media_url && (
-                <div style={{ position: "relative", width: "120px", height: "70px", overflow: "hidden", border: "1px solid #ddd" }}>
-                  <Image src={editingSlide.media_url} alt="" fill sizes="120px" quality={50} style={{ objectFit: "cover" }} />
+                <div style={{ position: "relative", width: "120px", height: "70px", overflow: "hidden", border: "1px solid #ddd", background: "#111" }}>
+                  {editingSlide.media_type === "video" || /\.(mp4|mov|webm)(\?.*)?$/i.test(editingSlide.media_url) ? (
+                    <video
+                      src={editingSlide.media_url}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <Image src={editingSlide.media_url} alt="" fill sizes="120px" quality={50} style={{ objectFit: "cover" }} />
+                  )}
                 </div>
               )}
 
@@ -312,8 +324,19 @@ export default function AdminHomeClient() {
                   opacity: slide.is_active ? 1 : 0.6,
                 }}
               >
-                <div style={{ position: "relative", width: "70px", height: "45px", background: "#eee", overflow: "hidden" }}>
-                  <Image src={slide.media_url} alt="" fill sizes="70px" quality={50} style={{ objectFit: "cover" }} />
+                <div style={{ position: "relative", width: "70px", height: "45px", background: "#111", overflow: "hidden" }}>
+                  {slide.media_type === "video" || /\.(mp4|mov|webm)(\?.*)?$/i.test(slide.media_url) ? (
+                    <video
+                      src={slide.media_url}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <Image src={slide.media_url} alt="" fill sizes="70px" quality={50} style={{ objectFit: "cover" }} />
+                  )}
                 </div>
                 <div>
                   <strong style={{ fontSize: "11px", display: "block" }}>Slide #{index + 1}</strong>

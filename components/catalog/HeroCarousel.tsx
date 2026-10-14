@@ -21,6 +21,11 @@ export default function HeroCarousel({
   const [animate, setAnimate] = useState(true);
   const [ready, setReady] = useState(false);
 
+  useEffect(() => {
+    const t = window.setTimeout(() => setReady(true), 1200);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // Avance automático: siempre hacia adelante. El clon de la primera imagen
   // al final de la pista hace que el loop se sienta continuo.
   useEffect(() => {
@@ -110,7 +115,22 @@ export default function HeroCarousel({
         style={{ transform, transition: animate ? undefined : "none" }}
       >
         {slides.map((image, position) => {
-          const picture = (
+          const isVideo =
+            image.mediaType === "video" ||
+            /\.(mp4|mov|webm)(\?.*)?$/i.test(image.url);
+
+          const media = isVideo ? (
+            <video
+              className="hero-video"
+              src={image.url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload={position === 0 ? "auto" : "metadata"}
+              onCanPlay={position === 0 ? () => setReady(true) : undefined}
+            />
+          ) : (
             <ProgressiveImage
               src={image.url}
               sizes="100vw"
@@ -132,9 +152,9 @@ export default function HeroCarousel({
               <Link
                 className="hero-slide-link"
                 href={image.href || "#productos"}
-                aria-label={`Ver imagen ${position + 1}`}
+                aria-label={`Ver slide ${position + 1}`}
               >
-                {picture}
+                {media}
               </Link>
             </div>
           );

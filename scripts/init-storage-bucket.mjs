@@ -34,7 +34,7 @@ async function main() {
     const { data, error } = await supabase.storage.createBucket(bucketName, {
       public: true,
       fileSizeLimit: 52428800, // 50MB (máximo permitido por Supabase Free Tier)
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"],
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime"],
     });
     if (error) {
       console.error("Error al crear bucket:", error);
@@ -46,7 +46,7 @@ async function main() {
     const { data, error } = await supabase.storage.updateBucket(bucketName, {
       public: true,
       fileSizeLimit: 52428800, // 50MB
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"],
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime"],
     });
     if (error) {
       console.error("Error al actualizar bucket:", error);

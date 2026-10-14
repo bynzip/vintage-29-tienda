@@ -58,11 +58,17 @@ async function readHomeData(): Promise<HomeData> {
   const bannerData = bannerResult.data as HomeBannerRow | null;
 
   const slides: HeroImage[] = slidesData.length > 0
-    ? slidesData.map((item) => ({
-        url: item.media_url,
-        order: item.sort_order,
-        href: item.href || undefined,
-      }))
+    ? slidesData.map((item) => {
+        const isVideo =
+          item.media_type === "video" ||
+          /\.(mp4|mov|webm)(\?.*)?$/i.test(item.media_url);
+        return {
+          url: item.media_url,
+          order: item.sort_order,
+          mediaType: isVideo ? "video" : "image",
+          href: item.href || undefined,
+        };
+      })
     : fallbackSlides;
 
   const banner = bannerData

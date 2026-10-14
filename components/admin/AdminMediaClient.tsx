@@ -214,17 +214,26 @@ export default function AdminMediaClient() {
           overflow: "hidden",
         }}
       >
-        {/* Miniatura */}
         <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", background: "#f6f5f3" }}>
-          <Image
-            src={item.public_url}
-            alt={item.file_name}
-            fill
-            sizes={isSmall ? "130px" : mode === "grid-large" ? "300px" : "200px"}
-            quality={60}
-            style={{ objectFit: "cover" }}
-            unoptimized={item.content_type?.includes("video")}
-          />
+          {item.content_type?.includes("video") || /\.(mp4|mov|webm)$/i.test(item.file_name) ? (
+            <video
+              src={item.public_url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <Image
+              src={item.public_url}
+              alt={item.file_name}
+              fill
+              sizes={isSmall ? "130px" : mode === "grid-large" ? "300px" : "200px"}
+              quality={60}
+              style={{ objectFit: "cover" }}
+            />
+          )}
           {/* Badge de estado */}
           <span
             style={{
@@ -353,14 +362,24 @@ export default function AdminMediaClient() {
     return (
       <div key={item.id} className="media-row-item">
         <div className="media-row-thumb">
-          <Image
-            src={item.public_url}
-            alt={item.file_name}
-            fill
-            sizes="46px"
-            quality={50}
-            unoptimized={item.content_type?.includes("video")}
-          />
+          {item.content_type?.includes("video") || /\.(mp4|mov|webm)$/i.test(item.file_name) ? (
+            <video
+              src={item.public_url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <Image
+              src={item.public_url}
+              alt={item.file_name}
+              fill
+              sizes="46px"
+              quality={50}
+            />
+          )}
         </div>
 
         <div className="media-row-info">
