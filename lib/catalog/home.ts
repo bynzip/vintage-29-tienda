@@ -8,13 +8,18 @@ import productSource from "@/productos.json";
 
 export type HomeData = {
   slides: HeroImage[];
+  couponBanner: {
+    imageUrl: string;
+    href: string;
+    ariaLabel?: string;
+  } | null;
   banner: {
     title: string;
     subtitle?: string | null;
     buttonLabel: string;
     href: string;
     imageUrl: string;
-  };
+  } | null;
 };
 
 const fallbackSlides: HeroImage[] = productSource.portada.map((image) => ({
@@ -33,14 +38,14 @@ const fallbackBanner = {
 
 async function readHomeData(): Promise<HomeData> {
   if (!hasSupabaseConfig()) {
-    return { slides: fallbackSlides, banner: fallbackBanner };
+    return { slides: fallbackSlides, banner: fallbackBanner, couponBanner: null };
   }
   const supabase = createSupabasePublicClient() as any;
   if (!supabase) {
-    return { slides: fallbackSlides, banner: fallbackBanner };
+    return { slides: fallbackSlides, banner: fallbackBanner, couponBanner: null };
   }
 
-  const [slidesResult, bannerResult] = await Promise.all([
+  const [slidesResult, bannerResult, couponResult] = await Promise.all([
     supabase
       .from("home_slides")
       .select("id, title, subtitle, media_type, media_url, button_label, href, sort_order")
@@ -52,24 +57,29 @@ async function readHomeData(): Promise<HomeData> {
       .eq("identifier", "main_promo")
       .eq("is_active", true)
       .maybeSingle(),
+    supabase
+      .from("home_banners")
+      .select("id, title, subtitle, button_label, href, image_url")
+      .eq("identifier", "coupon_banner")
+      .eq("is_active", true)
+      .maybeSingle(),
   ]);
 
   const slidesData = (slidesResult.data ?? []) as HomeSlideRow[];
   const bannerData = bannerResult.data as HomeBannerRow | null;
+  const couponData = couponResult.data as HomeBannerRow | null;
 
-  const slides: HeroImage[] = slidesData.length > 0
-    ? slidesData.map((item) => {
-        const isVideo =
-          item.media_type === "video" ||
-          /\.(mp4|mov|webm)(\?.*)?$/i.test(item.media_url);
-        return {
-          url: item.media_url,
-          order: item.sort_order,
-          mediaType: isVideo ? "video" : "image",
-          href: item.href || undefined,
-        };
-      })
-    : fallbackSlides;
+  const slides: HeroImage[] = slidesData.map((item) => {
+    const isVideo =
+      item.media_type === "video" ||
+      /\.(mp4|mov|webm)(\?.*)?$/i.test(item.media_url);
+    return {
+      url: item.media_url,
+      order: item.sort_order,
+      mediaType: isVideo ? "video" : "image",
+      href: item.href || undefined,
+    };
+  });
 
   const banner = bannerData
     ? {
@@ -79,9 +89,17 @@ async function readHomeData(): Promise<HomeData> {
         href: bannerData.href,
         imageUrl: bannerData.image_url,
       }
-    : fallbackBanner;
+    : null;
 
-  return { slides, banner };
+  const couponBanner = couponData && couponData.image_url
+    ? {
+        imageUrl: couponData.image_url,
+        href: couponData.href || "#productos",
+        ariaLabel: couponData.title || "Ver promoción",
+      }
+    : null;
+
+  return { slides, banner, couponBanner };
 }
 
 export const getHomeData = unstable_cache(readHomeData, ["home-data"], {

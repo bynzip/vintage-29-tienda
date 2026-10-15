@@ -2,6 +2,7 @@ import { getPublishedProducts } from "@/lib/catalog/products";
 import { getHomeData } from "@/lib/catalog/home";
 import CatalogGrid from "@/components/catalog/CatalogGrid";
 import Banner from "@/components/catalog/Banner";
+import CouponBanner from "@/components/catalog/CouponBanner";
 import HeroCarousel from "@/components/catalog/HeroCarousel";
 import LifestyleCarousel from "@/components/catalog/LifestyleCarousel";
 import ProductCarousel from "@/components/catalog/ProductCarousel";
@@ -15,9 +16,19 @@ export default async function HomePage() {
 
   return (
     <div className="home-page">
-      <div className="hero-scroll-stage">
-        <HeroCarousel hero={home.slides} />
-      </div>
+      {home.slides.length > 0 && (
+        <div className="hero-scroll-stage">
+          <HeroCarousel hero={home.slides} />
+        </div>
+      )}
+
+      {home.couponBanner && home.couponBanner.imageUrl && (
+        <CouponBanner
+          image={home.couponBanner.imageUrl}
+          href={home.couponBanner.href}
+          ariaLabel={home.couponBanner.ariaLabel}
+        />
+      )}
 
       <div className="home-overlay-content">
         {catalog.status === "ready" && catalog.products.length > 0 && (
@@ -63,10 +74,11 @@ export default async function HomePage() {
         <br />
         <br />
 
-        {home.banner.imageUrl && (
+        {home.banner && home.banner.imageUrl && (
           <Banner
             image={home.banner.imageUrl}
             title={home.banner.title}
+            subtitle={home.banner.subtitle}
             buttonLabel={home.banner.buttonLabel}
             href={home.banner.href}
           />

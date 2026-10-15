@@ -421,9 +421,9 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
     return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM, MOV)." };
   }
 
-  const maxBytes = 100 * 1024 * 1024; // 100MB
+  const maxBytes = 50 * 1024 * 1024; // 50MB
   if (file.size > maxBytes) {
-    return { error: "El archivo supera el límite de 100 MB permitido para multimedia." };
+    return { error: "El archivo supera el límite de 50 MB permitido para multimedia." };
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
@@ -521,6 +521,48 @@ export async function saveHomeSlideAction(formData: FormData): Promise<{ success
 
   revalidatePath("/");
   revalidatePath("/admin/home");
+  revalidateTag("home");
+  return { success: true };
+}
+
+export async function toggleHomeSlideActiveAction(id: string, is_active: boolean): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const { error } = await supabase.from("home_slides").update({ is_active }).eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  revalidateTag("home");
+  return { success: true };
+}
+
+export async function toggleHomeBannerActiveAction(identifier: string, is_active: boolean): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const { error } = await supabase.from("home_banners").update({ is_active }).eq("identifier", identifier);
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  revalidateTag("home");
+  return { success: true };
+}
+
+export async function reorderHomeSlidesAction(orderedIds: string[]): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const updates = orderedIds.map((id, index) =>
+    supabase.from("home_slides").update({ sort_order: index + 1 }).eq("id", id)
+  );
+  await Promise.all(updates);
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  revalidateTag("home");
   return { success: true };
 }
 
@@ -533,6 +575,7 @@ export async function deleteHomeSlideAction(id: string): Promise<{ success?: boo
 
   revalidatePath("/");
   revalidatePath("/admin/home");
+  revalidateTag("home");
   return { success: true };
 }
 
@@ -541,14 +584,21 @@ export async function saveHomeBannerAction(formData: FormData): Promise<{ succes
   if (!supabase || !user) return { error: "No autorizado." };
 
   const identifier = String(formData.get("identifier") ?? "main_promo").trim();
-  const title = String(formData.get("title") ?? "").trim();
+  let title = String(formData.get("title") ?? "").trim();
   const subtitle = String(formData.get("subtitle") ?? "").trim() || null;
   const button_label = String(formData.get("button_label") ?? "Comprar ahora").trim();
   const href = String(formData.get("href") ?? "#productos").trim();
   const image_url = String(formData.get("image_url") ?? "").trim();
   const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
 
-  if (!title || !image_url) return { error: "El banner requiere al menos título e imagen." };
+  if (!image_url) return { error: "El banner requiere una imagen o video." };
+  if (!title) {
+    if (identifier === "coupon_banner") {
+      title = "Mini banner promocional";
+    } else {
+      return { error: "El banner requiere un título." };
+    }
+  }
 
   const { error } = await supabase.from("home_banners").upsert({
     identifier,
@@ -564,6 +614,7 @@ export async function saveHomeBannerAction(formData: FormData): Promise<{ succes
 
   revalidatePath("/");
   revalidatePath("/admin/home");
+  revalidateTag("home");
   return { success: true };
 }
 

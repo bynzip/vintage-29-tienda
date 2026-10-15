@@ -4,9 +4,9 @@ const nextConfig = {
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   experimental: {
     serverActions: {
-      bodySizeLimit: "100mb",
+      bodySizeLimit: "50mb",
     },
-    middlewareClientMaxBodySize: 104857600,
+    middlewareClientMaxBodySize: 52428800,
   },
   images: {
     formats: ["image/webp"],
