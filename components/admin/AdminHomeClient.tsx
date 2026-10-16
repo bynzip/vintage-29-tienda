@@ -38,15 +38,9 @@ function AdminModalMediaPreview({
   isVideo?: boolean;
   emptyText?: string;
 }) {
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-
-  useEffect(() => {
-    setDimensions(null);
-  }, [url]);
-
   if (!url) {
     return (
-      <div className="admin-modal-media-preview" style={{ height: "170px" }}>
+      <div className="admin-modal-media-preview admin-modal-media-preview--empty">
         <div className="admin-modal-media-empty">
           <Upload size={26} />
           <span style={{ fontSize: "11px" }}>{emptyText}</span>
@@ -55,30 +49,8 @@ function AdminModalMediaPreview({
     );
   }
 
-  // Altura determinada de forma fija por el archivo multimedia original:
-  // - Si es un banner panorámico ancho (ratio > 2.5), respeta la altura natural original del archivo (entre 140px y 240px)
-  // - Si es formato estándar 16:9 o similar, calcula la altura proporcional al ancho estándar de 516px
-  // - Limita la altura máxima a 340px para que nunca sobrecargue la ventana
-  let heightPx = 280;
-  if (dimensions && dimensions.width > 0 && dimensions.height > 0) {
-    const ratio = dimensions.width / dimensions.height;
-    if (ratio > 2.5) {
-      heightPx = Math.min(Math.max(dimensions.height, 140), 240);
-    } else {
-      const proportional = Math.round(516 / ratio);
-      heightPx = Math.min(Math.max(proportional, 160), 340);
-    }
-  }
-
   return (
-    <div
-      className="admin-modal-media-preview"
-      style={{
-        height: `${heightPx}px`,
-        width: "100%",
-        flexShrink: 0,
-      }}
-    >
+    <div className="admin-modal-media-preview">
       {isVideo ? (
         <video
           src={url}
@@ -87,13 +59,7 @@ function AdminModalMediaPreview({
           muted
           playsInline
           controls
-          onLoadedMetadata={(e) => {
-            const v = e.currentTarget;
-            if (v.videoWidth && v.videoHeight) {
-              setDimensions({ width: v.videoWidth, height: v.videoHeight });
-            }
-          }}
-          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          style={{ width: "100%", height: "auto", display: "block", borderRadius: "11px" }}
         />
       ) : (
         /* eslint-disable-next-line @next/next/no-img-element */
@@ -101,13 +67,7 @@ function AdminModalMediaPreview({
           src={url}
           alt=""
           loading="lazy"
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            if (img.naturalWidth && img.naturalHeight) {
-              setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-            }
-          }}
-          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          style={{ width: "100%", height: "auto", display: "block", borderRadius: "11px" }}
         />
       )}
     </div>
