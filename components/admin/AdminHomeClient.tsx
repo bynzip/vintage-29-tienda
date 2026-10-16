@@ -754,26 +754,15 @@ export default function AdminHomeClient() {
                         controls
                       />
                     ) : (
-                      <Image
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
                         src={editingSlide.media_url}
                         alt=""
-                        fill
-                        sizes="560px"
-                        quality={85}
+                        loading="lazy"
                       />
                     )
                   ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        color: "#888",
-                        gap: "6px",
-                      }}
-                    >
+                    <div className="admin-modal-media-empty">
                       <Upload size={26} />
                       <span style={{ fontSize: "11px" }}>Sin archivo multimedia seleccionado</span>
                     </div>
@@ -1073,26 +1062,15 @@ export default function AdminHomeClient() {
                         controls
                       />
                     ) : (
-                      <Image
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
                         src={editingCoupon.image_url}
                         alt=""
-                        fill
-                        sizes="560px"
-                        quality={85}
+                        loading="lazy"
                       />
                     )
                   ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        color: "#888",
-                        gap: "6px",
-                      }}
-                    >
+                    <div className="admin-modal-media-empty">
                       <Upload size={26} />
                       <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
                     </div>
@@ -1246,26 +1224,15 @@ export default function AdminHomeClient() {
                         controls
                       />
                     ) : (
-                      <Image
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
                         src={editingPromo.image_url}
                         alt=""
-                        fill
-                        sizes="560px"
-                        quality={85}
+                        loading="lazy"
                       />
                     )
                   ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        color: "#888",
-                        gap: "6px",
-                      }}
-                    >
+                    <div className="admin-modal-media-empty">
                       <Upload size={26} />
                       <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
                     </div>
