@@ -132,6 +132,19 @@ export default function AdminHomeClient() {
     loadData();
   }, []);
 
+  const isAnyModalOpen =
+    slideModalOpen || reorderModalOpen || couponModalOpen || promoModalOpen;
+
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+      };
+    }
+  }, [isAnyModalOpen]);
+
   function notify(msg: string) {
     setSuccessMessage(msg);
     setTimeout(() => setSuccessMessage(null), 4000);
@@ -190,7 +203,7 @@ export default function AdminHomeClient() {
     formData.set("media_type", editingSlide.media_type ?? (isVideoUrl(editingSlide.media_url) ? "video" : "image"));
     formData.set("href", editingSlide.href ?? "#productos");
     formData.set("sort_order", String(editingSlide.sort_order ?? slides.length + 1));
-    formData.set("is_active", editingSlide.is_active ? "true" : "false");
+    formData.set("is_active", (editingSlide.is_active ?? true) ? "true" : "false");
 
     const res = await saveHomeSlideAction(formData);
     setSavingSlide(false);
@@ -286,7 +299,7 @@ export default function AdminHomeClient() {
     formData.set("button_label", editingPromo.button_label ?? "Comprar ahora");
     formData.set("href", editingPromo.href ?? "#productos");
     formData.set("image_url", editingPromo.image_url);
-    formData.set("is_active", editingPromo.is_active ? "true" : "false");
+    formData.set("is_active", (editingPromo.is_active ?? true) ? "true" : "false");
 
     const res = await saveHomeBannerAction(formData);
     setSavingPromo(false);
@@ -350,7 +363,7 @@ export default function AdminHomeClient() {
     formData.set("button_label", "Ver promoción");
     formData.set("href", editingCoupon.href ?? "#productos");
     formData.set("image_url", editingCoupon.image_url);
-    formData.set("is_active", editingCoupon.is_active ? "true" : "false");
+    formData.set("is_active", (editingCoupon.is_active ?? true) ? "true" : "false");
 
     const res = await saveHomeBannerAction(formData);
     setSavingCoupon(false);
@@ -757,15 +770,7 @@ export default function AdminHomeClient() {
       {/* MODAL 1: EDITAR / AÑADIR SLIDE                           */}
       {/* ======================================================== */}
       {slideModalOpen && editingSlide && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSlideModalOpen(false);
-              setEditingSlide(null);
-            }
-          }}
-        >
+        <div className="admin-modal-backdrop">
           <div className="admin-modal-card">
             <div className="admin-modal-header">
               <h3>{editingSlide.id ? "Editar Slide" : "Nuevo Slide de Portada"}</h3>
@@ -844,26 +849,6 @@ export default function AdminHomeClient() {
                     Al hacer clic en cualquier lugar de esta imagen en la portada, se abrirá este enlace.
                   </span>
                 </div>
-
-                <div className="admin-switch-field" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={editingSlide.is_active ?? true}
-                    className={`admin-switch${(editingSlide.is_active ?? true) ? " is-on" : ""}`}
-                    onClick={() =>
-                      setEditingSlide({
-                        ...editingSlide,
-                        is_active: !(editingSlide.is_active ?? true),
-                      })
-                    }
-                  >
-                    <span />
-                  </button>
-                  <span style={{ fontSize: "12px", color: "var(--ink)", fontWeight: 500 }}>
-                    Slide activo y visible en la tienda
-                  </span>
-                </div>
               </div>
 
               <div className="admin-modal-actions">
@@ -892,12 +877,7 @@ export default function AdminHomeClient() {
       {/* MODAL 2: ORDENAR SLIDES (DRAG AND DROP)                  */}
       {/* ======================================================== */}
       {reorderModalOpen && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setReorderModalOpen(false);
-          }}
-        >
+        <div className="admin-modal-backdrop">
           <div className="admin-modal-card">
             <div className="admin-modal-header">
               <h3>Ordenar Slides del Carrusel</h3>
@@ -1044,15 +1024,7 @@ export default function AdminHomeClient() {
       {/* MODAL 3: EDITAR MINI BANNER                              */}
       {/* ======================================================== */}
       {couponModalOpen && editingCoupon && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setCouponModalOpen(false);
-              setEditingCoupon(null);
-            }
-          }}
-        >
+        <div className="admin-modal-backdrop">
           <div className="admin-modal-card">
             <div className="admin-modal-header">
               <h3>Editar Mini Banner</h3>
@@ -1137,26 +1109,6 @@ export default function AdminHomeClient() {
                     }
                   />
                 </div>
-
-                <div className="admin-switch-field" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={editingCoupon.is_active ?? true}
-                    className={`admin-switch${(editingCoupon.is_active ?? true) ? " is-on" : ""}`}
-                    onClick={() =>
-                      setEditingCoupon({
-                        ...editingCoupon,
-                        is_active: !(editingCoupon.is_active ?? true),
-                      })
-                    }
-                  >
-                    <span />
-                  </button>
-                  <span style={{ fontSize: "12px", color: "var(--ink)", fontWeight: 500 }}>
-                    Mini banner visible en la tienda
-                  </span>
-                </div>
               </div>
 
               <div className="admin-modal-actions">
@@ -1185,15 +1137,7 @@ export default function AdminHomeClient() {
       {/* MODAL 4: EDITAR BANNER PROMOCIONAL                       */}
       {/* ======================================================== */}
       {promoModalOpen && editingPromo && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setPromoModalOpen(false);
-              setEditingPromo(null);
-            }
-          }}
-        >
+        <div className="admin-modal-backdrop">
           <div className="admin-modal-card">
             <div className="admin-modal-header">
               <h3>Editar Banner Promocional</h3>
@@ -1304,26 +1248,6 @@ export default function AdminHomeClient() {
                       }
                     />
                   </div>
-                </div>
-
-                <div className="admin-switch-field" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={editingPromo.is_active ?? true}
-                    className={`admin-switch${(editingPromo.is_active ?? true) ? " is-on" : ""}`}
-                    onClick={() =>
-                      setEditingPromo({
-                        ...editingPromo,
-                        is_active: !(editingPromo.is_active ?? true),
-                      })
-                    }
-                  >
-                    <span />
-                  </button>
-                  <span style={{ fontSize: "12px", color: "var(--ink)", fontWeight: 500 }}>
-                    Banner visible en la tienda
-                  </span>
                 </div>
               </div>
 
