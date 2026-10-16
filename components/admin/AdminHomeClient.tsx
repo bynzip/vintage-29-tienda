@@ -29,6 +29,91 @@ function isVideoUrl(url?: string | null): boolean {
   return /\.(mp4|mov|webm)(\?.*)?$/i.test(url);
 }
 
+function AdminModalMediaPreview({
+  url,
+  isVideo,
+  emptyText = "Sin archivo multimedia seleccionado",
+}: {
+  url?: string | null;
+  isVideo?: boolean;
+  emptyText?: string;
+}) {
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    setDimensions(null);
+  }, [url]);
+
+  if (!url) {
+    return (
+      <div className="admin-modal-media-preview" style={{ height: "170px" }}>
+        <div className="admin-modal-media-empty">
+          <Upload size={26} />
+          <span style={{ fontSize: "11px" }}>{emptyText}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Altura determinada de forma fija por el archivo multimedia original:
+  // - Si es un banner panorámico ancho (ratio > 2.5), respeta la altura natural original del archivo (entre 140px y 240px)
+  // - Si es formato estándar 16:9 o similar, calcula la altura proporcional al ancho estándar de 516px
+  // - Limita la altura máxima a 340px para que nunca sobrecargue la ventana
+  let heightPx = 280;
+  if (dimensions && dimensions.width > 0 && dimensions.height > 0) {
+    const ratio = dimensions.width / dimensions.height;
+    if (ratio > 2.5) {
+      heightPx = Math.min(Math.max(dimensions.height, 140), 240);
+    } else {
+      const proportional = Math.round(516 / ratio);
+      heightPx = Math.min(Math.max(proportional, 160), 340);
+    }
+  }
+
+  return (
+    <div
+      className="admin-modal-media-preview"
+      style={{
+        height: `${heightPx}px`,
+        width: "100%",
+        flexShrink: 0,
+      }}
+    >
+      {isVideo ? (
+        <video
+          src={url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controls
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            if (v.videoWidth && v.videoHeight) {
+              setDimensions({ width: v.videoWidth, height: v.videoHeight });
+            }
+          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+            }
+          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function AdminHomeClient() {
   const [slides, setSlides] = useState<HomeSlideRow[]>([]);
   const [mainPromo, setMainPromo] = useState<HomeBannerRow | null>(null);
@@ -742,32 +827,11 @@ export default function AdminHomeClient() {
             >
               <div className="admin-modal-content">
                 {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
-                <div className="admin-modal-media-preview">
-                  {editingSlide.media_url ? (
-                    isVideoUrl(editingSlide.media_url) || editingSlide.media_type === "video" ? (
-                      <video
-                        src={editingSlide.media_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        controls
-                      />
-                    ) : (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={editingSlide.media_url}
-                        alt=""
-                        loading="lazy"
-                      />
-                    )
-                  ) : (
-                    <div className="admin-modal-media-empty">
-                      <Upload size={26} />
-                      <span style={{ fontSize: "11px" }}>Sin archivo multimedia seleccionado</span>
-                    </div>
-                  )}
-                </div>
+                <AdminModalMediaPreview
+                  url={editingSlide.media_url}
+                  isVideo={isVideoUrl(editingSlide.media_url) || editingSlide.media_type === "video"}
+                  emptyText="Sin archivo multimedia seleccionado"
+                />
 
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video hasta 50MB) *</label>
@@ -1050,32 +1114,11 @@ export default function AdminHomeClient() {
             >
               <div className="admin-modal-content">
                 {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
-                <div className="admin-modal-media-preview">
-                  {editingCoupon.image_url ? (
-                    isVideoUrl(editingCoupon.image_url) ? (
-                      <video
-                        src={editingCoupon.image_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        controls
-                      />
-                    ) : (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={editingCoupon.image_url}
-                        alt=""
-                        loading="lazy"
-                      />
-                    )
-                  ) : (
-                    <div className="admin-modal-media-empty">
-                      <Upload size={26} />
-                      <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
-                    </div>
-                  )}
-                </div>
+                <AdminModalMediaPreview
+                  url={editingCoupon.image_url}
+                  isVideo={isVideoUrl(editingCoupon.image_url)}
+                  emptyText="Sin imagen o video seleccionado"
+                />
 
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video) *</label>
@@ -1212,32 +1255,11 @@ export default function AdminHomeClient() {
             >
               <div className="admin-modal-content">
                 {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
-                <div className="admin-modal-media-preview">
-                  {editingPromo.image_url ? (
-                    isVideoUrl(editingPromo.image_url) ? (
-                      <video
-                        src={editingPromo.image_url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        controls
-                      />
-                    ) : (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={editingPromo.image_url}
-                        alt=""
-                        loading="lazy"
-                      />
-                    )
-                  ) : (
-                    <div className="admin-modal-media-empty">
-                      <Upload size={26} />
-                      <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
-                    </div>
-                  )}
-                </div>
+                <AdminModalMediaPreview
+                  url={editingPromo.image_url}
+                  isVideo={isVideoUrl(editingPromo.image_url)}
+                  emptyText="Sin imagen o video seleccionado"
+                />
 
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video) *</label>
