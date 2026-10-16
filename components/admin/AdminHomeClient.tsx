@@ -736,47 +736,50 @@ export default function AdminHomeClient() {
               </button>
             </div>
 
-            {/* Media ocupa todo el ancho de la ventana emergente sin contar márgenes */}
-            <div className="admin-modal-media-full">
-              {editingSlide.media_url ? (
-                isVideoUrl(editingSlide.media_url) || editingSlide.media_type === "video" ? (
-                  <video
-                    src={editingSlide.media_url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                  />
-                ) : (
-                  <Image
-                    src={editingSlide.media_url}
-                    alt=""
-                    fill
-                    sizes="560px"
-                    quality={85}
-                  />
-                )
-              ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    color: "#888",
-                    gap: "6px",
-                  }}
-                >
-                  <Upload size={26} />
-                  <span style={{ fontSize: "11px" }}>Sin archivo multimedia seleccionado</span>
+            <form
+              onSubmit={handleSaveSlide}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
+                <div className="admin-modal-media-preview">
+                  {editingSlide.media_url ? (
+                    isVideoUrl(editingSlide.media_url) || editingSlide.media_type === "video" ? (
+                      <video
+                        src={editingSlide.media_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : (
+                      <Image
+                        src={editingSlide.media_url}
+                        alt=""
+                        fill
+                        sizes="560px"
+                        quality={85}
+                      />
+                    )
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        color: "#888",
+                        gap: "6px",
+                      }}
+                    >
+                      <Upload size={26} />
+                      <span style={{ fontSize: "11px" }}>Sin archivo multimedia seleccionado</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <form onSubmit={handleSaveSlide}>
-              <div className="admin-modal-body">
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video hasta 50MB) *</label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -894,7 +897,7 @@ export default function AdminHomeClient() {
               </button>
             </div>
 
-            <div className="admin-modal-body">
+            <div className="admin-modal-content">
               <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>
                 Arrastra y suelta los elementos para definir el orden en que aparecerán
                 las imágenes o videos en el carrusel principal.
@@ -946,9 +949,10 @@ export default function AdminHomeClient() {
                           position: "relative",
                           width: "50px",
                           height: "32px",
-                          background: "#111",
+                          background: "#f2f0ec",
+                          border: "1px solid #eae8e3",
                           overflow: "hidden",
-                          borderRadius: "2px",
+                          borderRadius: "6px",
                           flexShrink: 0,
                         }}
                       >
@@ -1051,47 +1055,50 @@ export default function AdminHomeClient() {
               </button>
             </div>
 
-            {/* Media a pantalla completa dentro del modal sin márgenes */}
-            <div className="admin-modal-media-full">
-              {editingCoupon.image_url ? (
-                isVideoUrl(editingCoupon.image_url) ? (
-                  <video
-                    src={editingCoupon.image_url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                  />
-                ) : (
-                  <Image
-                    src={editingCoupon.image_url}
-                    alt=""
-                    fill
-                    sizes="560px"
-                    quality={85}
-                  />
-                )
-              ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    color: "#888",
-                    gap: "6px",
-                  }}
-                >
-                  <Upload size={26} />
-                  <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
+            <form
+              onSubmit={handleSaveCoupon}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
+                <div className="admin-modal-media-preview">
+                  {editingCoupon.image_url ? (
+                    isVideoUrl(editingCoupon.image_url) ? (
+                      <video
+                        src={editingCoupon.image_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : (
+                      <Image
+                        src={editingCoupon.image_url}
+                        alt=""
+                        fill
+                        sizes="560px"
+                        quality={85}
+                      />
+                    )
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        color: "#888",
+                        gap: "6px",
+                      }}
+                    >
+                      <Upload size={26} />
+                      <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <form onSubmit={handleSaveCoupon}>
-              <div className="admin-modal-body">
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video) *</label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -1221,47 +1228,50 @@ export default function AdminHomeClient() {
               </button>
             </div>
 
-            {/* Media a ancho completo sin márgenes */}
-            <div className="admin-modal-media-full">
-              {editingPromo.image_url ? (
-                isVideoUrl(editingPromo.image_url) ? (
-                  <video
-                    src={editingPromo.image_url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                  />
-                ) : (
-                  <Image
-                    src={editingPromo.image_url}
-                    alt=""
-                    fill
-                    sizes="560px"
-                    quality={85}
-                  />
-                )
-              ) : (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    color: "#888",
-                    gap: "6px",
-                  }}
-                >
-                  <Upload size={26} />
-                  <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
+            <form
+              onSubmit={handleSavePromo}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                {/* Vista previa respetando márgenes internos y con esquinas redondeadas */}
+                <div className="admin-modal-media-preview">
+                  {editingPromo.image_url ? (
+                    isVideoUrl(editingPromo.image_url) ? (
+                      <video
+                        src={editingPromo.image_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                      />
+                    ) : (
+                      <Image
+                        src={editingPromo.image_url}
+                        alt=""
+                        fill
+                        sizes="560px"
+                        quality={85}
+                      />
+                    )
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        color: "#888",
+                        gap: "6px",
+                      }}
+                    >
+                      <Upload size={26} />
+                      <span style={{ fontSize: "11px" }}>Sin imagen o video seleccionado</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <form onSubmit={handleSavePromo}>
-              <div className="admin-modal-body">
                 <div className="admin-field">
                   <label>Archivo Multimedia (Imagen o Video) *</label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
