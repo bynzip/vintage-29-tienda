@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { GripVertical, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, GripVertical, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { saveProductAction, uploadMediaAction, type ProductActionState } from "@/app/admin/actions";
 import { buildVariantCombinations, type VariantDraft } from "@/lib/admin/variant-combinations";
 
@@ -81,7 +81,9 @@ export default function ProductForm({
   const [sizeIds, setSizeIds] = useState<string[]>(product.size_ids);
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [media, setMedia] = useState<ProductMedia[]>(product.media);
-  const [selectedAsset, setSelectedAsset] = useState("");
+  const [urlInput, setUrlInput] = useState("");
+  const [urlStatus, setUrlStatus] = useState<"idle" | "validating" | "valid" | "invalid">("idle");
+  const [urlErrorMsg, setUrlErrorMsg] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -97,15 +99,7 @@ export default function ProductForm({
   const colorNames = useMemo(() => new Map(colors.map((color) => [color.id, color.name])), [colors]);
   const sizeNames = useMemo(() => new Map(sizes.map((size) => [size.id, size.name])), [sizes]);
   const colorOptions = useMemo(() => new Map(colors.map((color) => [color.id, color])), [colors]);
-  const normalizedAssets = useMemo(() => {
-    return (assets ?? []).map((a) => {
-      if (typeof a === "string") {
-        const filename = a.split("/").pop() || a;
-        return { path: a, label: filename };
-      }
-      return a;
-    });
-  }, [assets]);
+  void assets;
 
   // Las combinaciones de variantes se regeneran solas cada vez que cambian los
   // colores o las tallas, conservando SKU, precio, stock y estado de las
@@ -252,20 +246,83 @@ export default function ProductForm({
     }
   }
 
-  function addMedia() {
-    if (!selectedAsset || media.some((item) => item.asset_path === selectedAsset)) return;
+  // Validación en tiempo real de la URL ingresada
+  useEffect(() => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      setUrlStatus("idle");
+      setUrlErrorMsg("");
+      return;
+    }
+
+    const isAbsolute = /^https?:\/\//i.test(trimmed);
+    const isRelative = trimmed.startsWith("/");
+
+    if (!isAbsolute && !isRelative) {
+      setUrlStatus("invalid");
+      setUrlErrorMsg("Ingresa una URL válida (ej. https://...supabase.co/... o /ruta)");
+      return;
+    }
+
+    if (media.some((item) => item.asset_path === trimmed)) {
+      setUrlStatus("invalid");
+      setUrlErrorMsg("Esta imagen ya está agregada en la galería de este producto.");
+      return;
+    }
+
+    if (/\.(mp4|webm)(\?.*)?$/i.test(trimmed)) {
+      setUrlStatus("valid");
+      setUrlErrorMsg("");
+      return;
+    }
+
+    setUrlStatus("validating");
+    setUrlErrorMsg("");
+
+    let isCancelled = false;
+    const timer = setTimeout(() => {
+      const img = new window.Image();
+      img.onload = () => {
+        if (!isCancelled) {
+          setUrlStatus("valid");
+          setUrlErrorMsg("");
+        }
+      };
+      img.onerror = () => {
+        if (!isCancelled) {
+          setUrlStatus("invalid");
+          setUrlErrorMsg("URL inválida o no se pudo cargar la imagen. Verifica que el enlace sea accesible y público.");
+        }
+      };
+      img.src = trimmed;
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [urlInput, media]);
+
+  function addMediaFromUrl() {
+    const trimmed = urlInput.trim();
+    if (!trimmed || urlStatus !== "valid") return;
+    if (media.some((item) => item.asset_path === trimmed)) return;
+
     setMedia((current) => [
       ...current,
       {
         id: newId(),
         color_id: null,
-        asset_path: selectedAsset,
-        alt_text: name,
+        asset_path: trimmed,
+        alt_text: name.trim() || "Producto",
         position: current.length,
         is_primary: current.length === 0,
         is_lifestyle: false,
       },
     ]);
+    setUrlInput("");
+    setUrlStatus("idle");
+    setUrlErrorMsg("");
   }
 
   return (
@@ -331,56 +388,180 @@ export default function ProductForm({
         <div className="admin-gallery-heading">
           <div>
             <h2>Galería del producto</h2>
-            <p>Sube imágenes a la nube o selecciona existentes. Puedes asociar cada foto a un color específico o mostrarla para todos los colores.</p>
+            <p>Sube imágenes a Supabase o añade fotos pegando su enlace URL público. Puedes asociar cada foto a un color específico o mostrarla para todos los colores.</p>
           </div>
           <span>{media.length} seleccionadas</span>
         </div>
 
         {uploadError && <p className="admin-alert" role="alert">{uploadError}</p>}
 
-        <div className="admin-add-image" style={{ flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
-          <button
-            type="button"
-            className="outline-button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? <Loader2 className="animate-spin" size={15} /> : <Upload size={15} />}
-            {isUploading ? "SUBIENDO A LA NUBE…" : "SUBIR FOTO A LA NUBE"}
-          </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "1 1 320px", display: "flex", alignItems: "center" }}>
+              <input
+                type="url"
+                value={urlInput}
+                placeholder="Pega la URL pública de la imagen (Supabase o enlace web)..."
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addMediaFromUrl();
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  minHeight: "42px",
+                  padding: "10px 36px 10px 11px",
+                  border: `1px solid ${
+                    urlStatus === "valid"
+                      ? "#10b981"
+                      : urlStatus === "invalid"
+                      ? "#ef4444"
+                      : "#dedbd6"
+                  }`,
+                  background: "#fff",
+                  fontSize: "11px",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                {urlStatus === "validating" && (
+                  <Loader2 size={16} className="animate-spin" style={{ color: "#888" }} />
+                )}
+                {urlStatus === "valid" && (
+                  <CheckCircle2 size={16} style={{ color: "#10b981" }} />
+                )}
+                {urlStatus === "invalid" && (
+                  <AlertCircle size={16} style={{ color: "#ef4444" }} />
+                )}
+              </div>
+            </div>
 
-          {normalizedAssets.length > 0 && (
-            <>
-              <select
-                aria-label="Seleccionar imagen existente"
-                value={selectedAsset}
-                onChange={(event) => setSelectedAsset(event.currentTarget.value)}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
+            />
+
+            <button
+              type="button"
+              className="outline-button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              title="Subir archivo directamente a Supabase Storage"
+              style={{ minHeight: "42px", whiteSpace: "nowrap" }}
+            >
+              {isUploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+              {isUploading ? "SUBIENDO…" : "SUBIR FOTO"}
+            </button>
+
+            <button
+              type="button"
+              className="dark-button"
+              onClick={addMediaFromUrl}
+              disabled={urlStatus !== "valid"}
+              style={{
+                minHeight: "42px",
+                whiteSpace: "nowrap",
+                opacity: urlStatus === "valid" ? 1 : 0.45,
+                cursor: urlStatus === "valid" ? "pointer" : "not-allowed",
+              }}
+            >
+              <Plus size={14} /> AÑADIR A GALERÍA
+            </button>
+          </div>
+
+          {/* Confirmación de URL válida con vista previa miniatura */}
+          {urlStatus === "valid" && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "8px 12px",
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: "6px",
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "4px",
+                  overflow: "hidden",
+                  background: "#e2e8f0",
+                  flexShrink: 0,
+                  border: "1px solid #86efac",
+                }}
               >
-                <option value="">O elegir existente…</option>
-                {normalizedAssets
-                  .filter((asset) => !media.some((item) => item.asset_path === asset.path))
-                  .map((asset) => (
-                    <option key={asset.path} value={asset.path}>
-                      {asset.label}
-                    </option>
-                  ))}
-              </select>
-              <button
-                type="button"
-                className="outline-button"
-                onClick={addMedia}
-                disabled={!selectedAsset}
-              >
-                <Plus size={15} /> AÑADIR
-              </button>
-            </>
+                {/\.(mp4|webm)(\?.*)?$/i.test(urlInput.trim()) ? (
+                  <video
+                    src={urlInput.trim()}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={urlInput.trim()}
+                    alt="Vista previa"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#166534",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                  }}
+                >
+                  <Check size={14} /> Enlace de imagen verificado y correcto
+                </span>
+                <span style={{ fontSize: "10px", color: "#15803d" }}>
+                  Listo para incluir en el producto. Haz clic en &quot;Añadir a galería&quot; o presiona Enter.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Alerta de URL inválida */}
+          {urlStatus === "invalid" && urlErrorMsg && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 12px",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: "6px",
+                color: "#991b1b",
+                fontSize: "11px",
+              }}
+            >
+              <AlertCircle size={15} style={{ flexShrink: 0, color: "#ef4444" }} />
+              <span>{urlErrorMsg}</span>
+            </div>
           )}
         </div>
         {media.length ? (
