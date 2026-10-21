@@ -21,6 +21,8 @@ import {
   toggleHomeSlideActiveAction,
   toggleHomeBannerActiveAction,
   reorderHomeSlidesAction,
+  saveCampaignMosaicAction,
+  toggleCampaignMosaicActiveAction,
 } from "@/app/admin/actions";
 import type { HomeSlideRow, HomeBannerRow } from "@/lib/supabase/database.types";
 
@@ -78,6 +80,9 @@ export default function AdminHomeClient() {
   const [slides, setSlides] = useState<HomeSlideRow[]>([]);
   const [mainPromo, setMainPromo] = useState<HomeBannerRow | null>(null);
   const [couponBanner, setCouponBanner] = useState<HomeBannerRow | null>(null);
+  const [mosaicMiniBanner, setMosaicMiniBanner] = useState<HomeBannerRow | null>(null);
+  const [socialSection, setSocialSection] = useState<HomeBannerRow | null>(null);
+  const [mosaicTiles, setMosaicTiles] = useState<HomeBannerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -107,6 +112,25 @@ export default function AdminHomeClient() {
   const [uploadingCoupon, setUploadingCoupon] = useState(false);
   const couponFileInputRef = useRef<HTMLInputElement>(null);
 
+  const [mosaicMiniModalOpen, setMosaicMiniModalOpen] = useState(false);
+  const [editingMosaicMini, setEditingMosaicMini] = useState<Partial<HomeBannerRow> | null>(null);
+  const [savingMosaicMini, setSavingMosaicMini] = useState(false);
+  const [uploadingMosaicMini, setUploadingMosaicMini] = useState(false);
+  const mosaicMiniFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [socialModalOpen, setSocialModalOpen] = useState(false);
+  const [editingSocial, setEditingSocial] = useState<Partial<HomeBannerRow> | null>(null);
+  const [savingSocial, setSavingSocial] = useState(false);
+  const [uploadingSocial, setUploadingSocial] = useState(false);
+  const socialFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [mosaicModalOpen, setMosaicModalOpen] = useState(false);
+  const [editingMosaicTiles, setEditingMosaicTiles] = useState<Partial<HomeBannerRow>[]>([]);
+  const [activeMosaicTab, setActiveMosaicTab] = useState(0);
+  const [savingMosaic, setSavingMosaic] = useState(false);
+  const [uploadingMosaicIndex, setUploadingMosaicIndex] = useState<number | null>(null);
+  const mosaicFileInputRef = useRef<HTMLInputElement>(null);
+
   async function loadData() {
     setLoading(true);
     const supabase = createSupabaseBrowserClient();
@@ -116,15 +140,25 @@ export default function AdminHomeClient() {
       return;
     }
 
-    const [slidesRes, mainPromoRes, couponRes] = await Promise.all([
+    const [slidesRes, mainPromoRes, couponRes, mosaicMiniRes, socialRes, mosaicRes] = await Promise.all([
       supabase.from("home_slides").select("*").order("sort_order", { ascending: true }),
       supabase.from("home_banners").select("*").eq("identifier", "main_promo").maybeSingle(),
       supabase.from("home_banners").select("*").eq("identifier", "coupon_banner").maybeSingle(),
+      supabase.from("home_banners").select("*").eq("identifier", "mosaic_mini_banner").maybeSingle(),
+      supabase.from("home_banners").select("*").eq("identifier", "social_section").maybeSingle(),
+      supabase
+        .from("home_banners")
+        .select("*")
+        .in("identifier", ["mosaic_tile_1", "mosaic_tile_2", "mosaic_tile_3", "mosaic_tile_4"])
+        .order("identifier", { ascending: true }),
     ]);
 
     if (slidesRes.data) setSlides(slidesRes.data);
     if (mainPromoRes.data) setMainPromo(mainPromoRes.data);
     if (couponRes.data) setCouponBanner(couponRes.data);
+    if (mosaicMiniRes.data) setMosaicMiniBanner(mosaicMiniRes.data);
+    if (socialRes.data) setSocialSection(socialRes.data);
+    if (mosaicRes.data) setMosaicTiles(mosaicRes.data);
     setLoading(false);
   }
 
@@ -133,7 +167,13 @@ export default function AdminHomeClient() {
   }, []);
 
   const isAnyModalOpen =
-    slideModalOpen || reorderModalOpen || couponModalOpen || promoModalOpen;
+    slideModalOpen ||
+    reorderModalOpen ||
+    couponModalOpen ||
+    mosaicMiniModalOpen ||
+    promoModalOpen ||
+    socialModalOpen ||
+    mosaicModalOpen;
 
   useEffect(() => {
     if (isAnyModalOpen) {
@@ -377,6 +417,211 @@ export default function AdminHomeClient() {
     }
   }
 
+  // --- Mosaic Mini Banner Handlers ---
+  async function handleToggleMosaicMiniActive(currentActive: boolean) {
+    if (!mosaicMiniBanner) return;
+    const nextActive = !currentActive;
+    setMosaicMiniBanner({ ...mosaicMiniBanner, is_active: nextActive });
+    const res = await toggleHomeBannerActiveAction("mosaic_mini_banner", nextActive);
+    if (res.error) {
+      setError(res.error);
+      loadData();
+    } else {
+      notify(nextActive ? "Mini banner intermedio activado." : "Mini banner intermedio desactivado.");
+    }
+  }
+
+  async function handleMosaicMiniUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingMosaicMini(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("folder", "home");
+      const res = await uploadMediaAction(formData);
+      if (res.error || !res.publicUrl) {
+        setError(res.error || "No se pudo subir el archivo para el mini banner.");
+      } else {
+        setEditingMosaicMini((prev) => ({
+          ...prev,
+          image_url: res.publicUrl!,
+        }));
+      }
+    } finally {
+      setUploadingMosaicMini(false);
+      if (mosaicMiniFileInputRef.current) mosaicMiniFileInputRef.current.value = "";
+    }
+  }
+
+  async function handleSaveMosaicMini(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingMosaicMini?.image_url) {
+      setError("Debes asignar una imagen o video para el mini banner.");
+      return;
+    }
+    setSavingMosaicMini(true);
+    const formData = new FormData();
+    formData.set("identifier", "mosaic_mini_banner");
+    formData.set("title", editingMosaicMini.title || "Mini banner intermedio");
+    formData.set("button_label", "Ver promoción");
+    formData.set("href", editingMosaicMini.href ?? "#productos");
+    formData.set("image_url", editingMosaicMini.image_url);
+    formData.set("is_active", (editingMosaicMini.is_active ?? true) ? "true" : "false");
+
+    const res = await saveHomeBannerAction(formData);
+    setSavingMosaicMini(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      notify("Mini banner intermedio guardado correctamente.");
+      setMosaicMiniModalOpen(false);
+      setEditingMosaicMini(null);
+      loadData();
+    }
+  }
+
+  // --- Social Section Handlers ---
+  async function handleToggleSocialActive(currentActive: boolean) {
+    if (!socialSection) return;
+    const nextActive = !currentActive;
+    setSocialSection({ ...socialSection, is_active: nextActive });
+    const res = await toggleHomeBannerActiveAction("social_section", nextActive);
+    if (res.error) {
+      setError(res.error);
+      loadData();
+    } else {
+      notify(nextActive ? "Sección de redes sociales activada en la tienda." : "Sección de redes sociales desactivada.");
+    }
+  }
+
+  async function handleSocialUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingSocial(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("folder", "home");
+      const res = await uploadMediaAction(formData);
+      if (res.error || !res.publicUrl) {
+        setError(res.error || "No se pudo subir el archivo de video para redes sociales.");
+      } else {
+        setEditingSocial((prev) => ({
+          ...prev,
+          image_url: res.publicUrl!,
+        }));
+      }
+    } finally {
+      setUploadingSocial(false);
+      if (socialFileInputRef.current) socialFileInputRef.current.value = "";
+    }
+  }
+
+  async function handleSaveSocial(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingSocial(true);
+    const formData = new FormData();
+    formData.set("identifier", "social_section");
+    formData.set("title", editingSocial?.title || "Nuestra comunidad");
+    if (editingSocial?.subtitle) formData.set("subtitle", editingSocial.subtitle);
+    formData.set("button_label", editingSocial?.button_label || "VER TIKTOK");
+    formData.set("href", editingSocial?.href || "https://www.tiktok.com");
+    formData.set("image_url", editingSocial?.image_url ?? "");
+    formData.set("is_active", (editingSocial?.is_active ?? true) ? "true" : "false");
+
+    const res = await saveHomeBannerAction(formData);
+    setSavingSocial(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      notify("Sección de redes sociales guardada correctamente.");
+      setSocialModalOpen(false);
+      setEditingSocial(null);
+      loadData();
+    }
+  }
+
+  // --- Campaign Mosaic Handlers ---
+  async function handleToggleMosaicActive(currentActive: boolean) {
+    const nextActive = !currentActive;
+    setMosaicTiles((prev) => prev.map((t) => ({ ...t, is_active: nextActive })));
+    const res = await toggleCampaignMosaicActiveAction(nextActive);
+    if (res.error) {
+      setError(res.error);
+      loadData();
+    } else {
+      notify(nextActive ? "Mosaico de 4 imágenes activado en la tienda." : "Mosaico de 4 imágenes desactivado.");
+    }
+  }
+
+  async function handleMosaicTileUpload(event: React.ChangeEvent<HTMLInputElement>, tileIdx: number) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingMosaicIndex(tileIdx);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("folder", "home");
+      const res = await uploadMediaAction(formData);
+      if (res.error || !res.publicUrl) {
+        setError(res.error || `No se pudo subir la imagen #${tileIdx + 1}.`);
+      } else {
+        setEditingMosaicTiles((prev) => {
+          const next = [...prev];
+          next[tileIdx] = { ...next[tileIdx], image_url: res.publicUrl! };
+          return next;
+        });
+      }
+    } finally {
+      setUploadingMosaicIndex(null);
+      if (mosaicFileInputRef.current) mosaicFileInputRef.current.value = "";
+    }
+  }
+
+  async function handleSaveMosaic(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingMosaic(true);
+
+    const formData = new FormData();
+    formData.set("tilesJson", JSON.stringify(editingMosaicTiles));
+    formData.set("is_active", (editingMosaicTiles[0]?.is_active ?? true) ? "true" : "false");
+
+    const res = await saveCampaignMosaicAction(formData);
+    setSavingMosaic(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      notify("Mosaico de 4 imágenes guardado correctamente.");
+      setMosaicModalOpen(false);
+      loadData();
+    }
+  }
+
+  function openMosaicModal() {
+    const initialTiles: Partial<HomeBannerRow>[] = [0, 1, 2, 3].map((i) => {
+      const existing = mosaicTiles[i];
+      if (existing) return { ...existing };
+      const fallbacks = [
+        { title: "Colección Blusas", button_label: "VER BLUSAS", href: "#productos", image_url: "" },
+        { title: "Colección Pantalones", button_label: "VER PANTALONES", href: "#productos", image_url: "" },
+        { title: "Colección Vestidos", button_label: "VER VESTIDOS", href: "#productos", image_url: "" },
+        { title: "Colección Denim", button_label: "VER DENIM", href: "#productos", image_url: "" },
+      ];
+      return {
+        identifier: `mosaic_tile_${i + 1}`,
+        title: fallbacks[i].title,
+        button_label: fallbacks[i].button_label,
+        href: fallbacks[i].href,
+        image_url: fallbacks[i].image_url,
+        is_active: mosaicTiles[0]?.is_active ?? true,
+      };
+    });
+    setEditingMosaicTiles(initialTiles);
+    setActiveMosaicTab(0);
+    setMosaicModalOpen(true);
+  }
+
   if (loading) {
     return (
       <div className="admin-loading">
@@ -393,7 +638,7 @@ export default function AdminHomeClient() {
           <h1>Configuración de la Página de Inicio</h1>
           <p>
             Gestiona los componentes visuales de la tienda: Carrusel de portada,
-            Mini banner promocional y Banner inferior.
+            Mini banner promocional, Mosaico de campañas (4 imágenes), Video de comunidad y Banner inferior.
           </p>
         </div>
       </div>
@@ -660,7 +905,318 @@ export default function AdminHomeClient() {
       </section>
 
       {/* ======================================================== */}
-      {/* SECCIÓN 3: BANNER PROMOCIONAL INFERIOR                   */}
+      {/* SECCIÓN 3: MINI BANNER SOBRE EL MOSAICO                  */}
+      {/* ======================================================== */}
+      <section className="admin-form-section" style={{ marginBottom: "28px" }}>
+        <div className="admin-gallery-heading">
+          <div>
+            <h2>Mini Banner sobre el Mosaico</h2>
+            <p>
+              Tira promocional horizontal ubicada entre el carrusel de productos (&ldquo;Recién llegado&rdquo;) y el mosaico de 4 imágenes.
+            </p>
+          </div>
+        </div>
+
+        {mosaicMiniBanner ? (
+          <div className={`admin-home-row${mosaicMiniBanner.is_active ? "" : " is-inactive"}`}>
+            <div className="admin-home-thumb">
+              {mosaicMiniBanner.image_url ? (
+                isVideoUrl(mosaicMiniBanner.image_url) ? (
+                  <video
+                    src={mosaicMiniBanner.image_url}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : (
+                  <Image
+                    src={mosaicMiniBanner.image_url}
+                    alt={mosaicMiniBanner.title || ""}
+                    fill
+                    sizes="80px"
+                    style={{ objectFit: "cover" }}
+                  />
+                )
+              ) : (
+                <div style={{ display: "grid", placeItems: "center", color: "#888", fontSize: "10px" }}>
+                  Sin imagen
+                </div>
+              )}
+            </div>
+
+            <div className="admin-home-info">
+              <span className="admin-home-title">
+                {mosaicMiniBanner.title || "Mini banner intermedio"}
+              </span>
+              <span className="admin-home-sub">
+                Enlace: <strong>{mosaicMiniBanner.href || "#productos"}</strong>
+              </span>
+            </div>
+
+            <div className="admin-switch-field" title="Activar / Desactivar mini banner">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={mosaicMiniBanner.is_active}
+                aria-label="Activar o desactivar mini banner"
+                className={`admin-switch${mosaicMiniBanner.is_active ? " is-on" : ""}`}
+                onClick={() => handleToggleMosaicMiniActive(mosaicMiniBanner.is_active)}
+              >
+                <span />
+              </button>
+            </div>
+
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="admin-clean-btn"
+                title="Editar mini banner"
+                onClick={() => {
+                  setEditingMosaicMini(mosaicMiniBanner);
+                  setMosaicMiniModalOpen(true);
+                }}
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-home-row is-inactive">
+            <div className="admin-home-thumb" style={{ display: "grid", placeItems: "center", color: "#888", fontSize: "10px" }}>
+              Vacío
+            </div>
+            <div className="admin-home-info">
+              <span className="admin-home-title">Mini Banner no configurado</span>
+              <span className="admin-home-sub">Haz clic en Configurar para añadir una imagen o video.</span>
+            </div>
+            <div />
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="outline-button"
+                style={{ fontSize: "11px", padding: "4px 10px" }}
+                onClick={() => {
+                  setEditingMosaicMini({
+                    image_url: "",
+                    href: "#productos",
+                    title: "Mini banner intermedio",
+                    is_active: true,
+                  });
+                  setMosaicMiniModalOpen(true);
+                }}
+              >
+                CONFIGURAR
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ======================================================== */}
+      {/* SECCIÓN 4: MOSAICO DE CAMPAÑAS (4 IMÁGENES)              */}
+      {/* ======================================================== */}
+      <section className="admin-form-section" style={{ marginBottom: "28px" }}>
+        <div className="admin-gallery-heading">
+          <div>
+            <h2>Mosaico de Campañas (4 Imágenes)</h2>
+            <p>
+              Cuadrícula 2x2 ubicada entre &ldquo;Recién llegado&rdquo; y &ldquo;Toda la colección&rdquo;. Cada cuadrante
+              incluye una imagen destacada, su botón y enlace a su colección.
+            </p>
+          </div>
+        </div>
+
+        {mosaicTiles.length === 4 ? (
+          <div className={`admin-home-row${mosaicTiles[0]?.is_active ? "" : " is-inactive"}`}>
+            <div
+              className="admin-home-thumb"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gridTemplateRows: "1fr 1fr",
+                gap: "2px",
+                padding: "2px",
+                background: "#e5e5e5",
+              }}
+            >
+              {mosaicTiles.map((tile, i) => (
+                <div key={i} style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#f0efed" }}>
+                  {tile.image_url ? (
+                    <Image
+                      src={tile.image_url}
+                      alt=""
+                      fill
+                      sizes="40px"
+                      quality={40}
+                      style={{ objectFit: "cover" }}
+                    />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            <div className="admin-home-info">
+              <span className="admin-home-title">
+                Mosaico de 4 Imágenes ({mosaicTiles.map((t) => t.button_label).join(" · ")})
+              </span>
+              <span className="admin-home-sub">
+                Bloques: 1: {mosaicTiles[0]?.title} &middot; 2: {mosaicTiles[1]?.title} &middot; 3: {mosaicTiles[2]?.title} &middot; 4: {mosaicTiles[3]?.title}
+              </span>
+            </div>
+
+            <div className="admin-switch-field" title="Activar / Desactivar mosaico de 4 imágenes">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={mosaicTiles[0]?.is_active}
+                aria-label="Activar o desactivar mosaico de 4 imágenes"
+                className={`admin-switch${mosaicTiles[0]?.is_active ? " is-on" : ""}`}
+                onClick={() => handleToggleMosaicActive(mosaicTiles[0]?.is_active ?? true)}
+              >
+                <span />
+              </button>
+            </div>
+
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="admin-clean-btn"
+                title="Editar mosaico de 4 imágenes"
+                onClick={openMosaicModal}
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-home-row is-inactive">
+            <div className="admin-home-thumb" style={{ display: "grid", placeItems: "center", color: "#888", fontSize: "10px" }}>
+              Vacío
+            </div>
+            <div className="admin-home-info">
+              <span className="admin-home-title">Mosaico de 4 Imágenes no configurado</span>
+              <span className="admin-home-sub">Haz clic en Configurar para asignar las 4 imágenes y colecciones.</span>
+            </div>
+            <div />
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="outline-button"
+                style={{ fontSize: "11px", padding: "4px 10px" }}
+                onClick={openMosaicModal}
+              >
+                CONFIGURAR
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ======================================================== */}
+      {/* SECCIÓN 4: VIDEO BANNER DE COMUNIDAD                     */}
+      {/* ======================================================== */}
+      <section className="admin-form-section" style={{ marginBottom: "28px" }}>
+        <div className="admin-gallery-heading">
+          <div>
+            <h2>Video Banner de Comunidad</h2>
+            <p>
+              Banner de video recto con título y botón social, ubicado entre el mosaico de 4 imágenes y toda la colección de productos.
+              El video abarca el ancho completo de la página sin bandas negras, y su altura se adapta junto al título y subtítulo.
+            </p>
+          </div>
+        </div>
+
+        {socialSection ? (
+          <div className={`admin-home-row${socialSection.is_active ? "" : " is-inactive"}`}>
+            <div className="admin-home-thumb">
+              {socialSection.image_url ? (
+                <video
+                  src={socialSection.image_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              ) : (
+                <div style={{ display: "grid", placeItems: "center", color: "#888", fontSize: "10px" }}>
+                  Sin video
+                </div>
+              )}
+            </div>
+
+            <div className="admin-home-info">
+              <span className="admin-home-title">
+                {socialSection.title || "Nuestra comunidad"} (Video Banner)
+              </span>
+              <span className="admin-home-sub">
+                Enlace al hacer clic: {socialSection.href ? <strong>{socialSection.href}</strong> : "Sin enlace"}
+              </span>
+            </div>
+
+            <div className="admin-switch-field" title="Activar / Desactivar banner de video">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={socialSection.is_active}
+                aria-label="Activar o desactivar banner de video"
+                className={`admin-switch${socialSection.is_active ? " is-on" : ""}`}
+                onClick={() => handleToggleSocialActive(socialSection.is_active)}
+              >
+                <span />
+              </button>
+            </div>
+
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="admin-clean-btn"
+                title="Editar banner de video"
+                onClick={() => {
+                  setEditingSocial(socialSection);
+                  setSocialModalOpen(true);
+                }}
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="admin-home-row is-inactive">
+            <div className="admin-home-thumb" style={{ display: "grid", placeItems: "center", color: "#888", fontSize: "10px" }}>
+              Vacío
+            </div>
+            <div className="admin-home-info">
+              <span className="admin-home-title">Video Banner no configurado</span>
+              <span className="admin-home-sub">Haz clic en Configurar para asignar video y enlaces de tu comunidad.</span>
+            </div>
+            <div />
+            <div className="admin-home-actions">
+              <button
+                type="button"
+                className="outline-button"
+                style={{ fontSize: "11px", padding: "4px 10px" }}
+                onClick={() => {
+                  setEditingSocial({
+                    title: "Nuestra comunidad",
+                    subtitle: "Síguenos en redes sociales y comparte tu look con #vintage29",
+                    button_label: "VER TIKTOK",
+                    href: "https://www.tiktok.com",
+                    image_url: "",
+                    is_active: true,
+                  });
+                  setSocialModalOpen(true);
+                }}
+              >
+                CONFIGURAR
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ======================================================== */}
+      {/* SECCIÓN 5: BANNER PROMOCIONAL INFERIOR                   */}
       {/* ======================================================== */}
       <section className="admin-form-section">
         <div className="admin-gallery-heading">
@@ -1134,7 +1690,119 @@ export default function AdminHomeClient() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 4: EDITAR BANNER PROMOCIONAL                       */}
+      {/* MODAL: EDITAR MINI BANNER SOBRE EL MOSAICO               */}
+      {/* ======================================================== */}
+      {mosaicMiniModalOpen && editingMosaicMini && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-card">
+            <div className="admin-modal-header">
+              <h3>Editar Mini Banner sobre el Mosaico</h3>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => {
+                  setMosaicMiniModalOpen(false);
+                  setEditingMosaicMini(null);
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveMosaicMini}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                <AdminModalMediaPreview
+                  url={editingMosaicMini.image_url}
+                  isVideo={isVideoUrl(editingMosaicMini.image_url)}
+                  emptyText="Sin imagen o video seleccionado"
+                />
+
+                <div className="admin-field">
+                  <label>Archivo Multimedia (Imagen o Video) *</label>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      name="image_url"
+                      value={editingMosaicMini.image_url ?? ""}
+                      required
+                      placeholder="URL pública de la imagen o video"
+                      onChange={(e) =>
+                        setEditingMosaicMini({ ...editingMosaicMini, image_url: e.target.value })
+                      }
+                      style={{ flex: 1 }}
+                    />
+                    <input
+                      ref={mosaicMiniFileInputRef}
+                      type="file"
+                      accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
+                      onChange={handleMosaicMiniUpload}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      type="button"
+                      className="outline-button"
+                      onClick={() => mosaicMiniFileInputRef.current?.click()}
+                      disabled={uploadingMosaicMini}
+                    >
+                      {uploadingMosaicMini ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                      {uploadingMosaicMini ? "SUBIENDO…" : "SUBIR"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-field">
+                  <label>Link de Redirección (href) *</label>
+                  <input
+                    name="href"
+                    value={editingMosaicMini.href ?? ""}
+                    required
+                    placeholder="Ej. /categoria/ofertas o #productos"
+                    onChange={(e) =>
+                      setEditingMosaicMini({ ...editingMosaicMini, href: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="admin-field">
+                  <label>Texto descriptivo / Alt (opcional)</label>
+                  <input
+                    name="title"
+                    value={editingMosaicMini.title ?? ""}
+                    placeholder="Ej. Promoción de temporada"
+                    onChange={(e) =>
+                      setEditingMosaicMini({ ...editingMosaicMini, title: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  className="outline-button"
+                  onClick={() => {
+                    setMosaicMiniModalOpen(false);
+                    setEditingMosaicMini(null);
+                  }}
+                  disabled={savingMosaicMini}
+                >
+                  CANCELAR
+                </button>
+                <button type="submit" className="dark-button" disabled={savingMosaicMini}>
+                  {savingMosaicMini ? <Loader2 className="animate-spin" size={14} /> : null}
+                  {savingMosaicMini ? "GUARDANDO…" : "GUARDAR"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDITAR BANNER PROMOCIONAL INFERIOR                */}
       {/* ======================================================== */}
       {promoModalOpen && editingPromo && (
         <div className="admin-modal-backdrop">
@@ -1266,6 +1934,322 @@ export default function AdminHomeClient() {
                 <button type="submit" className="dark-button" disabled={savingPromo}>
                   {savingPromo ? <Loader2 className="animate-spin" size={14} /> : null}
                   {savingPromo ? "GUARDANDO…" : "GUARDAR BANNER"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 5: EDITAR VIDEO BANNER DE COMUNIDAD                */}
+      {/* ======================================================== */}
+      {socialModalOpen && editingSocial && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-card">
+            <div className="admin-modal-header">
+              <h3>Editar Video Banner de Comunidad</h3>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => {
+                  setSocialModalOpen(false);
+                  setEditingSocial(null);
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveSocial}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                {/* Vista previa con video */}
+                <AdminModalMediaPreview
+                  url={editingSocial.image_url}
+                  isVideo={true}
+                  emptyText="Sin video seleccionado (se mostrarán marcadores de posición)"
+                />
+
+                <div className="admin-field">
+                  <label>Video de la Comunidad (MP4, WebM o MOV hasta 50MB)</label>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="text"
+                      name="image_url"
+                      value={editingSocial.image_url ?? ""}
+                      placeholder="URL pública del video o sube un archivo"
+                      onChange={(e) =>
+                        setEditingSocial({ ...editingSocial, image_url: e.target.value })
+                      }
+                      style={{ flex: 1 }}
+                    />
+                    <input
+                      ref={socialFileInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,.mov,video/*"
+                      onChange={handleSocialUpload}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      type="button"
+                      className="outline-button"
+                      onClick={() => socialFileInputRef.current?.click()}
+                      disabled={uploadingSocial}
+                    >
+                      {uploadingSocial ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                      {uploadingSocial ? "SUBIENDO…" : "SUBIR VIDEO"}
+                    </button>
+                  </div>
+                  <span style={{ fontSize: "10px", color: "#777", marginTop: "3px", display: "block" }}>
+                    El video se mostrará como un banner recto de ancho completo sin bandas negras. Su altura se adapta junto al título y subtítulo.
+                  </span>
+                </div>
+
+                <div className="admin-field">
+                  <label>Título de la Sección *</label>
+                  <input
+                    name="title"
+                    value={editingSocial.title ?? ""}
+                    required
+                    placeholder="Ej. Nuestra comunidad"
+                    onChange={(e) =>
+                      setEditingSocial({ ...editingSocial, title: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="admin-field">
+                  <label>Subtítulo o Descripción</label>
+                  <input
+                    name="subtitle"
+                    value={editingSocial.subtitle ?? ""}
+                    placeholder="Ej. Síguenos en redes sociales y comparte tu look con #vintage29"
+                    onChange={(e) =>
+                      setEditingSocial({ ...editingSocial, subtitle: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="admin-field">
+                  <label>Enlace de Red Social al hacer clic (opcional)</label>
+                  <input
+                    name="href"
+                    value={editingSocial.href ?? ""}
+                    placeholder="Ej. https://www.tiktok.com/@vintage29_"
+                    onChange={(e) =>
+                      setEditingSocial({ ...editingSocial, href: e.target.value })
+                    }
+                  />
+                  <span style={{ fontSize: "10px", color: "#777", marginTop: "3px", display: "block" }}>
+                    El banner no muestra botones visibles. Al hacer clic en cualquier parte del video, se abrirá este enlace.
+                  </span>
+                </div>
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  className="outline-button"
+                  onClick={() => {
+                    setSocialModalOpen(false);
+                    setEditingSocial(null);
+                  }}
+                  disabled={savingSocial}
+                >
+                  CANCELAR
+                </button>
+                <button type="submit" className="dark-button" disabled={savingSocial}>
+                  {savingSocial ? <Loader2 className="animate-spin" size={14} /> : null}
+                  {savingSocial ? "GUARDANDO…" : "GUARDAR VIDEO BANNER"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 6: EDITAR MOSAICO DE CAMPAÑAS (4 IMÁGENES)         */}
+      {/* ======================================================== */}
+      {mosaicModalOpen && editingMosaicTiles.length === 4 && (
+        <div className="admin-modal-backdrop">
+          <div className="admin-modal-card" style={{ maxWidth: "620px" }}>
+            <div className="admin-modal-header">
+              <div>
+                <h3 style={{ margin: 0 }}>Editar Mosaico de Campañas (4 Imágenes)</h3>
+                <p style={{ margin: "3px 0 0", fontSize: "11px", color: "#666" }}>
+                  Ubicado entre &ldquo;Recién llegado&rdquo; y &ldquo;Toda la colección&rdquo;. Cuadrícula 2x2.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close"
+                onClick={() => setMosaicModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveMosaic}
+              style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflow: "hidden" }}
+            >
+              <div className="admin-modal-content">
+                {/* Selector de Pestañas de las 4 Imágenes */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "14px" }}>
+                  {[0, 1, 2, 3].map((idx) => {
+                    const tile = editingMosaicTiles[idx];
+                    const isSelected = activeMosaicTab === idx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveMosaicTab(idx)}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "6px 4px",
+                          borderRadius: "6px",
+                          border: isSelected ? "2px solid #171717" : "1px solid #e2e0dc",
+                          background: isSelected ? "#f6f5f3" : "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ position: "relative", width: "100%", height: "36px", background: "#eae8e4", borderRadius: "4px", overflow: "hidden" }}>
+                          {tile?.image_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={tile.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <span style={{ display: "grid", placeItems: "center", height: "100%", fontSize: "10px", color: "#888" }}>
+                              #{idx + 1}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "10px", fontWeight: isSelected ? 700 : 500, color: isSelected ? "#171717" : "#666" }}>
+                          Imagen #{idx + 1}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Contenido del cuadrante activo */}
+                {editingMosaicTiles[activeMosaicTab] && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <AdminModalMediaPreview
+                      url={editingMosaicTiles[activeMosaicTab]?.image_url}
+                      isVideo={false}
+                      emptyText={`Sin imagen seleccionada para el cuadrante #${activeMosaicTab + 1}`}
+                    />
+
+                    <div className="admin-field">
+                      <label>Imagen del Cuadrante #{activeMosaicTab + 1} *</label>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <input
+                          type="text"
+                          value={editingMosaicTiles[activeMosaicTab]?.image_url ?? ""}
+                          required
+                          placeholder="URL pública de la imagen o sube una"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingMosaicTiles((prev) => {
+                              const next = [...prev];
+                              next[activeMosaicTab] = { ...next[activeMosaicTab], image_url: val };
+                              return next;
+                            });
+                          }}
+                          style={{ flex: 1 }}
+                        />
+                        <input
+                          ref={mosaicFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleMosaicTileUpload(e, activeMosaicTab)}
+                          style={{ display: "none" }}
+                        />
+                        <button
+                          type="button"
+                          className="outline-button"
+                          onClick={() => mosaicFileInputRef.current?.click()}
+                          disabled={uploadingMosaicIndex !== null}
+                        >
+                          {uploadingMosaicIndex === activeMosaicTab ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                          {uploadingMosaicIndex === activeMosaicTab ? "SUBIENDO…" : "SUBIR"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <div className="admin-field">
+                        <label>Texto del Botón *</label>
+                        <input
+                          value={editingMosaicTiles[activeMosaicTab]?.button_label ?? ""}
+                          required
+                          placeholder="Ej. VER BLUSAS"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingMosaicTiles((prev) => {
+                              const next = [...prev];
+                              next[activeMosaicTab] = { ...next[activeMosaicTab], button_label: val };
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                      <div className="admin-field">
+                        <label>Enlace de Redirección (href) *</label>
+                        <input
+                          value={editingMosaicTiles[activeMosaicTab]?.href ?? ""}
+                          required
+                          placeholder="Ej. #productos o /categoria/blusas"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingMosaicTiles((prev) => {
+                              const next = [...prev];
+                              next[activeMosaicTab] = { ...next[activeMosaicTab], href: val };
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="admin-field">
+                      <label>Título / Texto Alt descriptivo</label>
+                      <input
+                        value={editingMosaicTiles[activeMosaicTab]?.title ?? ""}
+                        placeholder="Ej. Colección Blusas"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditingMosaicTiles((prev) => {
+                            const next = [...prev];
+                            next[activeMosaicTab] = { ...next[activeMosaicTab], title: val };
+                            return next;
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  className="outline-button"
+                  onClick={() => setMosaicModalOpen(false)}
+                  disabled={savingMosaic}
+                >
+                  CANCELAR
+                </button>
+                <button type="submit" className="dark-button" disabled={savingMosaic}>
+                  {savingMosaic ? <Loader2 className="animate-spin" size={14} /> : null}
+                  {savingMosaic ? "GUARDANDO…" : "GUARDAR MOSAICO"}
                 </button>
               </div>
             </form>

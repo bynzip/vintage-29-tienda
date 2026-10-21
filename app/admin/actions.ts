@@ -542,8 +542,57 @@ export async function toggleHomeBannerActiveAction(identifier: string, is_active
   const { supabase, user } = await getActiveAdmin();
   if (!supabase || !user) return { error: "No autorizado." };
 
-  const { error } = await supabase.from("home_banners").update({ is_active }).eq("identifier", identifier);
-  if (error) return { error: error.message };
+  const { data: existing } = await supabase.from("home_banners").select("id").eq("identifier", identifier).maybeSingle();
+  if (!existing) {
+    const defaults: Record<string, { title: string; subtitle: string | null; button_label: string; href: string; image_url: string }> = {
+      main_promo: {
+        title: "Blouses Collection",
+        subtitle: "Descubre nuestra selección especial de temporada",
+        button_label: "Comprar ahora",
+        href: "#productos",
+        image_url: "",
+      },
+      coupon_banner: {
+        title: "Mini banner promocional",
+        subtitle: null,
+        button_label: "Ver promoción",
+        href: "#productos",
+        image_url: "",
+      },
+      mosaic_mini_banner: {
+        title: "Mini banner intermedio",
+        subtitle: null,
+        button_label: "Ver promoción",
+        href: "#productos",
+        image_url: "",
+      },
+      social_section: {
+        title: "Nuestra comunidad",
+        subtitle: "Síguenos en redes sociales y comparte tu look con #vintage29",
+        button_label: "VER TIKTOK",
+        href: "https://www.tiktok.com",
+        image_url: "https://yrcnamfovydovywecdfb.supabase.co/storage/v1/object/public/catalog-media/home/1792016344950-83fd77-gaa.mp4",
+      },
+    };
+
+    const config = defaults[identifier] ?? {
+      title: identifier,
+      subtitle: null,
+      button_label: "Ver más",
+      href: "#",
+      image_url: "",
+    };
+
+    const { error } = await supabase.from("home_banners").insert({
+      identifier,
+      ...config,
+      is_active,
+    });
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase.from("home_banners").update({ is_active }).eq("identifier", identifier);
+    if (error) return { error: error.message };
+  }
 
   revalidatePath("/");
   revalidatePath("/admin/home");
@@ -591,10 +640,14 @@ export async function saveHomeBannerAction(formData: FormData): Promise<{ succes
   const image_url = String(formData.get("image_url") ?? "").trim();
   const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
 
-  if (!image_url) return { error: "El banner requiere una imagen o video." };
+  if (!image_url && identifier !== "social_section") return { error: "El banner requiere una imagen o video." };
   if (!title) {
     if (identifier === "coupon_banner") {
       title = "Mini banner promocional";
+    } else if (identifier === "mosaic_mini_banner") {
+      title = "Mini banner intermedio";
+    } else if (identifier === "social_section") {
+      title = "Nuestra comunidad";
     } else {
       return { error: "El banner requiere un título." };
     }
@@ -610,6 +663,76 @@ export async function saveHomeBannerAction(formData: FormData): Promise<{ succes
     is_active,
   }, { onConflict: "identifier" });
 
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  revalidateTag("home");
+  return { success: true };
+}
+
+export async function toggleCampaignMosaicActiveAction(is_active: boolean): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  const { error } = await supabase
+    .from("home_banners")
+    .update({ is_active })
+    .in("identifier", ["mosaic_tile_1", "mosaic_tile_2", "mosaic_tile_3", "mosaic_tile_4"]);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin/home");
+  revalidateTag("home");
+  return { success: true };
+}
+
+export async function saveCampaignMosaicAction(formData: FormData): Promise<{ success?: boolean; error?: string }> {
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return { error: "No autorizado." };
+
+  let tiles: Array<{
+    identifier?: string;
+    title?: string;
+    button_label?: string;
+    href?: string;
+    image_url?: string;
+  }>;
+
+  try {
+    tiles = JSON.parse(String(formData.get("tilesJson") ?? "[]"));
+  } catch {
+    return { error: "Formato inválido de datos del mosaico." };
+  }
+
+  if (!Array.isArray(tiles) || tiles.length !== 4) {
+    return { error: "El mosaico requiere exactamente 4 imágenes." };
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const tile = tiles[i];
+    if (!tile.image_url) {
+      return { error: `La imagen #${i + 1} del mosaico es obligatoria.` };
+    }
+    if (!tile.button_label?.trim()) {
+      return { error: `El texto del botón #${i + 1} es obligatorio.` };
+    }
+  }
+
+  const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
+
+  const upserts = tiles.map((tile, i) => ({
+    identifier: `mosaic_tile_${i + 1}`,
+    title: tile.title?.trim() || `Colección ${i + 1}`,
+    subtitle: null,
+    button_label: tile.button_label?.trim() || "VER COLECCIÓN",
+    href: tile.href?.trim() || "#productos",
+    image_url: tile.image_url!.trim(),
+    is_active,
+  }));
+
+  const { error } = await supabase.from("home_banners").upsert(upserts, { onConflict: "identifier" });
   if (error) return { error: error.message };
 
   revalidatePath("/");

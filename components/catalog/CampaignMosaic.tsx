@@ -32,7 +32,6 @@ export default function CampaignMosaic({ items, label = "Explora nuestras colecc
           />
           <Link className="home-campaign-button" href={tile.href}>
             {tile.buttonLabel}
-            <span aria-hidden="true">›</span>
           </Link>
         </article>
       ))}

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 type BannerProps = {
   image: string;
@@ -15,7 +14,7 @@ export default function Banner({ image, title, subtitle, buttonLabel, href }: Ba
 
   return (
     <section className="home-banner" aria-label={title}>
-      <div className="home-banner-image">
+      <div className="home-banner-media">
         {isVideo ? (
           <video
             src={image}
@@ -23,16 +22,23 @@ export default function Banner({ image, title, subtitle, buttonLabel, href }: Ba
             loop
             muted
             playsInline
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            preload="metadata"
+            className="home-banner-asset"
           />
         ) : (
-          <Image src={image} alt="" fill sizes="100vw" quality={95} loading="lazy" />
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={image}
+            alt=""
+            loading="lazy"
+            className="home-banner-asset"
+          />
         )}
       </div>
       <div className="home-banner-shade" aria-hidden="true" />
       <div className="home-banner-content">
         <h2>{title}</h2>
-        {subtitle && <p style={{ margin: 0, fontSize: "clamp(12px, 1.4vw, 16px)", opacity: 0.9 }}>{subtitle}</p>}
+        {subtitle && <p className="home-banner-subtitle">{subtitle}</p>}
         <Link className="home-banner-button" href={href}>
           {buttonLabel}
         </Link>

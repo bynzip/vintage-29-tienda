@@ -7,6 +7,8 @@ import HeroCarousel from "@/components/catalog/HeroCarousel";
 import LifestyleCarousel from "@/components/catalog/LifestyleCarousel";
 import ProductCarousel from "@/components/catalog/ProductCarousel";
 import ProductGrid from "@/components/catalog/ProductGrid";
+import SocialMediaSection from "@/components/catalog/SocialMediaSection";
+import CampaignMosaic from "@/components/catalog/CampaignMosaic";
 
 export default async function HomePage() {
   const [catalog, home] = await Promise.all([
@@ -23,11 +25,13 @@ export default async function HomePage() {
       )}
 
       {home.couponBanner && home.couponBanner.imageUrl && (
-        <CouponBanner
-          image={home.couponBanner.imageUrl}
-          href={home.couponBanner.href}
-          ariaLabel={home.couponBanner.ariaLabel}
-        />
+        <div className="home-top-coupon-wrap">
+          <CouponBanner
+            image={home.couponBanner.imageUrl}
+            href={home.couponBanner.href}
+            ariaLabel={home.couponBanner.ariaLabel}
+          />
+        </div>
       )}
 
       <div className="home-overlay-content">
@@ -55,6 +59,30 @@ export default async function HomePage() {
           )}
         </section>
 
+        {home.mosaicMiniBanner && home.mosaicMiniBanner.imageUrl && (
+          <div className="home-mosaic-banner-wrap">
+            <CouponBanner
+              image={home.mosaicMiniBanner.imageUrl}
+              href={home.mosaicMiniBanner.href}
+              ariaLabel={home.mosaicMiniBanner.ariaLabel}
+            />
+          </div>
+        )}
+
+        {home.mosaic?.isActive && home.mosaic.items.length === 4 ? (
+          <CampaignMosaic items={home.mosaic.items} />
+        ) : null}
+
+        {home.socialSection?.isActive ? (
+          <SocialMediaSection
+            title={home.socialSection.title}
+            subtitle={home.socialSection.subtitle}
+            buttonLabel={home.socialSection.buttonLabel}
+            socialUrl={home.socialSection.socialUrl}
+            videoSrc={home.socialSection.videoSrc}
+          />
+        ) : null}
+
         {catalog.status === "ready" && catalog.products.length > 0 && (
           <section className="home-product-grid-section">
             <div className="page-gutter">
@@ -70,9 +98,6 @@ export default async function HomePage() {
             <ProductGrid products={catalog.products} />
           </section>
         )}
-
-        <br />
-        <br />
 
         {home.banner && home.banner.imageUrl && (
           <Banner
