@@ -49,3 +49,9 @@ supabase/.temp
 
 # Caché local de imágenes optimizadas (sharp)
 .image-cache
+
+# Isolated local verification (generated keys and logs)
+.verification/
+
+# Exportaciones de catálogo y archivos comerciales
+catalog-backups/
