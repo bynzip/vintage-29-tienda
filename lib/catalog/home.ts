@@ -67,7 +67,7 @@ async function readHomeData(): Promise<HomeData> {
       mosaic: null,
     };
   }
-  const supabase = createSupabasePublicClient() as any;
+  const supabase = createSupabasePublicClient();
   if (!supabase) {
     return {
       slides: fallbackSlides,
@@ -114,6 +114,11 @@ async function readHomeData(): Promise<HomeData> {
       .order("identifier", { ascending: true }),
   ]);
 
+  const queryError = slidesResult.error ?? bannerResult.error ?? couponResult.error ?? mosaicMiniResult.error ?? socialResult.error ?? mosaicResult.error;
+  if (queryError) {
+    console.error("HOME_READ_FAILED", queryError.code);
+    throw new Error("No se pudo cargar la portada. Inténtalo de nuevo.");
+  }
   const slidesData = (slidesResult.data ?? []) as HomeSlideRow[];
   const bannerData = bannerResult.data as HomeBannerRow | null;
   const couponData = couponResult.data as HomeBannerRow | null;

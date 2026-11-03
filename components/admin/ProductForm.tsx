@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AlertCircle, Check, CheckCircle2, GripVertical, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { saveProductAction, uploadMediaAction, type ProductActionState } from "@/app/admin/actions";
+import { isCatalogMediaUrl } from "@/lib/catalog/validation";
 import { buildVariantCombinations, type VariantDraft } from "@/lib/admin/variant-combinations";
 
 type CatalogValue = { id: string; name: string; slug: string; sort_order: number; hex_color?: string | null };
@@ -12,6 +13,7 @@ type ProductVariant = VariantDraft;
 type ProductMedia = { id: string; color_id?: string | null; asset_path: string; alt_text: string; position: number; is_primary: boolean; is_lifestyle: boolean };
 export type AdminCatalogProduct = {
   id: string;
+  updated_at?: string;
   name: string;
   slug: string;
   description: string | null;
@@ -26,6 +28,7 @@ export type AdminCatalogProduct = {
   color_ids: string[];
   size_ids: string[];
   variants: ProductVariant[];
+  archived_variants?: ProductVariant[];
   media: ProductMedia[];
 };
 
@@ -79,6 +82,7 @@ export default function ProductForm({
   const [published, setPublished] = useState(product.status === "published");
   const [colorRows, setColorRows] = useState<string[]>(product.color_ids);
   const [sizeIds, setSizeIds] = useState<string[]>(product.size_ids);
+  const [stockReason, setStockReason] = useState("");
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [media, setMedia] = useState<ProductMedia[]>(product.media);
   const [urlInput, setUrlInput] = useState("");
@@ -95,6 +99,7 @@ export default function ProductForm({
 
   useEffect(() => { if (state.success) router.push("/admin/products?saved=1"); }, [router, state.success]);
 
+  const originalVariants = product.archived_variants ?? product.variants;
   const selectedColorIds = colorRows.filter(Boolean);
   const colorNames = useMemo(() => new Map(colors.map((color) => [color.id, color.name])), [colors]);
   const sizeNames = useMemo(() => new Map(sizes.map((size) => [size.id, size.name])), [sizes]);
@@ -109,7 +114,7 @@ export default function ProductForm({
   useEffect(() => {
     setVariants((existing) => (colorKey || sizeKey)
       ? buildVariantCombinations({
-        existing,
+        existing: [...originalVariants.filter((archived) => !existing.some((v) => v.color_id === archived.color_id && v.size_id === archived.size_id)), ...existing],
         colorIds: colorKey ? colorKey.split(",") : [],
         sizeIds: sizeKey ? sizeKey.split(",") : [],
         colorNames,
@@ -117,7 +122,7 @@ export default function ProductForm({
         createId: newId,
       })
       : []);
-  }, [colorKey, sizeKey, colorNames, sizeNames]);
+  }, [colorKey, sizeKey, colorNames, sizeNames, originalVariants]);
 
   // Variantes guardadas en la base que desaparecerán al guardar porque su
   // color o su talla ya no están seleccionados para el producto.
@@ -143,6 +148,7 @@ export default function ProductForm({
 
   const payload = useMemo(() => ({
     id: product.id,
+    expected_updated_at: product.updated_at ?? null,
     name,
     slug,
     description,
@@ -165,10 +171,11 @@ export default function ProductForm({
       is_active: variant.is_active,
       position: variant.position,
       prices: priceListId && variant.amount_cents ? [{ price_list_id: priceListId, amount_cents: variant.amount_cents, is_active: true, tax_included: true }] : [],
-      inventory: warehouseId ? [{ warehouse_id: warehouseId, quantity_on_hand: variant.quantity_on_hand, quantity_reserved: variant.quantity_reserved, reorder_point: 1, incoming_quantity: 0 }] : [],
+      stock_adjustment: variant.quantity_on_hand !== (originalVariants.find((old) => old.id === variant.id)?.quantity_on_hand ?? 0)
+        ? { expected_quantity: originalVariants.find((old) => old.id === variant.id)?.quantity_on_hand ?? 0, quantity: variant.quantity_on_hand, reason: stockReason } : null,
     })),
     media,
-  }), [care, description, featured, fitId, materialSummary, media, name, priceListId, product.id, published, selectedColorIds, shortDescription, sizeIds, slug, subcategoryId, variants, warehouseId]);
+  }), [stockReason, product.updated_at, originalVariants, care, description, featured, fitId, materialSummary, media, name, priceListId, product.id, published, selectedColorIds, shortDescription, sizeIds, slug, subcategoryId, variants, warehouseId]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (saveRemovalConfirmed || !removedVariants.length) return;
@@ -255,8 +262,8 @@ export default function ProductForm({
       return;
     }
 
-    const isAbsolute = /^https?:\/\//i.test(trimmed);
-    const isRelative = trimmed.startsWith("/");
+    const isAbsolute = isCatalogMediaUrl(trimmed);
+    const isRelative = false;
 
     if (!isAbsolute && !isRelative) {
       setUrlStatus("invalid");
@@ -381,6 +388,7 @@ export default function ProductForm({
 
       <section className="admin-form-section">
         <div className="admin-gallery-heading"><div><h2>Variantes, precio e inventario</h2><p>Las combinaciones se generan solas al elegir colores y tallas, y conservan los datos de las que ya existían.</p></div></div>
+        <label className="admin-field">Motivo del ajuste de stock (obligatorio si cambia)<input value={stockReason} maxLength={500} placeholder="Ej. conteo físico del almacén online" onChange={(event) => setStockReason(event.currentTarget.value)} /></label>
         {variants.length ? <div className="variant-table-wrap"><table className="variant-table"><thead><tr><th>Variante</th><th>SKU</th><th>Precio PEN</th><th>Stock</th><th>Activa</th></tr></thead><tbody>{variants.map((variant, index) => <tr key={variant.id}><td>{variant.variant_name || "—"}</td><td><input value={variant.sku} placeholder="SKU" onChange={(event) => updateVariant(index, { sku: event.currentTarget.value })} /></td><td><input aria-label={`Precio de ${variant.variant_name}`} type="number" min="0.01" step="0.01" value={variant.amount_cents ? variant.amount_cents / 100 : ""} onChange={(event) => updateVariant(index, { amount_cents: event.currentTarget.value ? Math.round(Number(event.currentTarget.value) * 100) : null })} /></td><td><input aria-label={`Stock de ${variant.variant_name}`} type="number" min="0" step="1" value={variant.quantity_on_hand} onChange={(event) => updateVariant(index, { quantity_on_hand: Math.max(0, Number(event.currentTarget.value)) })} /></td><td><input aria-label={`Variante activa ${variant.variant_name}`} type="checkbox" checked={variant.is_active} onChange={(event) => updateVariant(index, { is_active: event.currentTarget.checked })} /></td></tr>)}</tbody></table></div> : <p className="admin-gallery-empty">Selecciona colores y/o tallas y las combinaciones aparecerán aquí.</p>}
       </section>
 
@@ -703,17 +711,17 @@ export default function ProductForm({
 
       {removalRequest && <VariantRemovalDialog
         title={`Quitar ${removalRequest.kind === "color" ? "color" : "talla"}: ${removalRequest.label}`}
-        copy={`Al quitar ${removalRequest.label} se eliminarán las variantes que lo usan. El borrado se hace definitivo al guardar el producto.`}
+        copy={`Al quitar ${removalRequest.label} se retirarán las variantes que lo usan al guardar. Sus IDs, existencias e historial se conservan.`}
         affected={removalRequest.affected}
         confirmLabel="QUITAR"
         onCancel={() => setRemovalRequest(null)}
         onConfirm={() => { removalRequest.apply(); setRemovalRequest(null); }}
       />}
       {saveDialogOpen && <VariantRemovalDialog
-        title="Confirmar eliminación de variantes"
-        copy="Quitaste colores o tallas que el producto tenía guardados. Al guardar, estas variantes se eliminarán definitivamente."
+        title="Confirmar retiro de variantes"
+        copy="Quitaste colores o tallas que el producto tenía guardados. Al guardar, estas variantes quedarán inactivas y conservarán su historial."
         affected={toImpacts(removedVariants)}
-        confirmLabel="ELIMINAR Y GUARDAR"
+        confirmLabel="RETIRAR Y GUARDAR"
         onCancel={() => setSaveDialogOpen(false)}
         onConfirm={() => { setSaveDialogOpen(false); setSaveRemovalConfirmed(true); }}
       />}
@@ -741,7 +749,7 @@ function VariantRemovalDialog({
       <section className="admin-dialog" role="dialog" aria-modal="true" aria-label={title}>
         <div className="admin-dialog-heading"><div><span className="eyebrow">VARIANTES AFECTADAS</span><h2>{title}</h2></div><button type="button" className="admin-dialog-close" aria-label="Cerrar" onClick={onCancel}><X size={18} /></button></div>
         <p className="admin-dialog-copy">{copy}</p>
-        <p className="admin-dialog-subtitle">Se eliminarán {affected.length} {affected.length === 1 ? "variante" : "variantes"}</p>
+        <p className="admin-dialog-subtitle">Se retirarán {affected.length} {affected.length === 1 ? "variante" : "variantes"}</p>
         <ul className="admin-related-products">
           {affected.map((variant) => <li key={variant.id}>
             <span className="admin-variant-impact-name">{variant.name}</span>

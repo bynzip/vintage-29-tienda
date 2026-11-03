@@ -14,6 +14,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (result.status !== "ready") return { title: "Producto no disponible" };
   return {
     title: result.product.name,
+    alternates: { canonical: `/products/${result.product.slug}` },
     description: result.product.description ?? `${result.product.name} · Vintage 29`,
     openGraph: {
       title: result.product.name,

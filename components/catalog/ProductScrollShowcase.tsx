@@ -85,6 +85,11 @@ export default function ProductScrollShowcase({ product }: { product: CatalogPro
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name ?? "");
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? "");
   const [isFavorite, setIsFavorite] = useState(false);
+  const selectedColorId = product.colors?.find((c) => c.name === selectedColor)?.id;
+  const selectedSizeId = product.sizeOptions?.find((s) => s.name === selectedSize)?.id;
+  const selectedVariant = product.variants.find((v) => (!selectedColorId || v.colorId === selectedColorId)
+    && (!selectedSizeId || v.sizeId === selectedSizeId));
+
 
   const allImages = useMemo(() => product.images.filter((image) => image.url), [product.images]);
   const images = useMemo(() => {
@@ -199,7 +204,7 @@ export default function ProductScrollShowcase({ product }: { product: CatalogPro
     };
   }, [product.slug, updateTrack]);
 
-  const priceLabel = getPriceLabel(product);
+  const priceLabel = selectedVariant?.price != null ? formatPrice(selectedVariant.price) : getPriceLabel(product);
   const description = product.shortDescription || product.description;
 
   return (
@@ -306,7 +311,7 @@ export default function ProductScrollShowcase({ product }: { product: CatalogPro
           )}
 
           <div className="product-purchase-actions">
-            <button className="product-add-to-cart" type="button">AGREGAR AL CARRITO</button>
+            <button className="product-add-to-cart" type="button" disabled title="El carrito se habilitará en la siguiente fase">AGREGAR AL CARRITO</button>
             <button
               className={`product-favorite${isFavorite ? " is-active" : ""}`}
               type="button"
@@ -317,10 +322,7 @@ export default function ProductScrollShowcase({ product }: { product: CatalogPro
               <Heart size={19} strokeWidth={1.7} fill={isFavorite ? "currentColor" : "none"} />
             </button>
           </div>
-          <div className="product-shipping-info" aria-label="Opciones de recogida y envío">
-            <p>Recogida en tienda <strong>GRATIS</strong></p>
-            <p>Envío a domicilio estándar a partir de 35 € <strong>GRATIS</strong></p>
-          </div>
+          <p role="status">{selectedVariant ? (selectedVariant.available ? "Disponible en catálogo" : "Agotado") : "Combinación no disponible"}</p>
           <div className="product-card-links">
             <a href="#product-details">Detalles del producto</a>
             <button type="button">Guía de tallas</button>

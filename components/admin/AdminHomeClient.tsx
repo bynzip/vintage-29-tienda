@@ -153,7 +153,9 @@ export default function AdminHomeClient() {
         .order("identifier", { ascending: true }),
     ]);
 
-    if (slidesRes.data) setSlides(slidesRes.data);
+    const queryError = slidesRes.error ?? mainPromoRes.error ?? couponRes.error ?? mosaicMiniRes.error ?? socialRes.error ?? mosaicRes.error;
+    if (queryError) { setError("No se pudo cargar la portada. Vuelve a intentarlo."); setLoading(false); return; }
+    if (slidesRes.data) setSlides(slidesRes.data as HomeSlideRow[]);
     if (mainPromoRes.data) setMainPromo(mainPromoRes.data);
     if (couponRes.data) setCouponBanner(couponRes.data);
     if (mosaicMiniRes.data) setMosaicMiniBanner(mosaicMiniRes.data);
@@ -1355,7 +1357,7 @@ export default function AdminHomeClient() {
                 />
 
                 <div className="admin-field">
-                  <label>Archivo Multimedia (Imagen o Video hasta 50MB) *</label>
+                  <label>Archivo Multimedia (Imagen o Video hasta 10MB) *</label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <input
                       type="text"
@@ -1376,7 +1378,7 @@ export default function AdminHomeClient() {
                     <input
                       ref={slideFileInputRef}
                       type="file"
-                      accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
+                      accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
                       onChange={handleSlideUpload}
                       style={{ display: "none" }}
                     />
@@ -1625,7 +1627,7 @@ export default function AdminHomeClient() {
                     <input
                       ref={couponFileInputRef}
                       type="file"
-                      accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
+                      accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
                       onChange={handleCouponUpload}
                       style={{ display: "none" }}
                     />
@@ -1737,7 +1739,7 @@ export default function AdminHomeClient() {
                     <input
                       ref={mosaicMiniFileInputRef}
                       type="file"
-                      accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
+                      accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
                       onChange={handleMosaicMiniUpload}
                       style={{ display: "none" }}
                     />
@@ -1850,7 +1852,7 @@ export default function AdminHomeClient() {
                     <input
                       ref={promoFileInputRef}
                       type="file"
-                      accept="image/*,video/mp4,video/webm,video/quicktime,.mov"
+                      accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm"
                       onChange={handlePromoUpload}
                       style={{ display: "none" }}
                     />
@@ -1974,7 +1976,7 @@ export default function AdminHomeClient() {
                 />
 
                 <div className="admin-field">
-                  <label>Video de la Comunidad (MP4, WebM o MOV hasta 50MB)</label>
+                  <label>Video de la Comunidad (MP4 o WebM hasta 10MB)</label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <input
                       type="text"
@@ -1989,7 +1991,7 @@ export default function AdminHomeClient() {
                     <input
                       ref={socialFileInputRef}
                       type="file"
-                      accept="video/mp4,video/webm,video/quicktime,.mov,video/*"
+                      accept="video/mp4,video/webm"
                       onChange={handleSocialUpload}
                       style={{ display: "none" }}
                     />
@@ -2168,7 +2170,7 @@ export default function AdminHomeClient() {
                         <input
                           ref={mosaicFileInputRef}
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp,image/avif"
                           onChange={(e) => handleMosaicTileUpload(e, activeMosaicTab)}
                           style={{ display: "none" }}
                         />

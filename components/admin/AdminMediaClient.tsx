@@ -13,6 +13,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import { readAllPages } from "@/lib/supabase/pagination";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { uploadMediaAction, deleteMediaAssetAction } from "@/app/admin/actions";
 import type { ViewMediaUsageRow } from "@/lib/supabase/database.types";
@@ -42,13 +43,12 @@ export default function AdminMediaClient() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("view_media_usage")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await readAllPages((from,to) => supabase.from("view_media_usage").select("*")
+        .order("created_at", { ascending:false }).order("id").range(from,to));
       setMediaList(data as ViewMediaUsageRow[]);
+    } catch {
+      setUploadError("No se pudo cargar la biblioteca de medios.");
     }
     setLoading(false);
   }
@@ -87,17 +87,15 @@ export default function AdminMediaClient() {
 
   async function handleDelete(item: ViewMediaUsageRow) {
     if (item.usage_count > 0) {
-      const confirmInUse = confirm(
-        `¡Atención! Esta imagen se está usando en ${item.usage_count} lugar(es) (${item.used_in_products?.join(", ") || "portada"}). Si la eliminas, podría dejar de verse en la tienda. ¿Deseas eliminarla de todas formas?`
-      );
-      if (!confirmInUse) return;
-    } else {
-      if (!confirm(`¿Eliminar definitivamente "${item.file_name}" del almacenamiento?`)) return;
+      setUploadError("Este archivo está en uso. Retíralo de productos y portada antes de eliminarlo.");
+      return;
     }
+    if (!confirm(`¿Eliminar definitivamente "${item.file_name}" del almacenamiento?`)) return;
 
     setDeletingId(item.id);
     try {
-      await deleteMediaAssetAction(item.id, item.file_path);
+      const result = await deleteMediaAssetAction(item.id);
+      if (result.error) { setUploadError(result.error); return; }
       setMediaList((current) => current.filter((m) => m.id !== item.id));
     } finally {
       setDeletingId(null);
@@ -481,7 +479,7 @@ export default function AdminMediaClient() {
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,video/*"
+            accept="image/jpeg,image/png,image/webp,image/avif,video/*"
             onChange={handleFileUpload}
             style={{ display: "none" }}
           />

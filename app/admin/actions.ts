@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { MEDIA_MAX_BYTES, MEDIA_MIME_EXTENSIONS, matchesMediaSignature, variantInputSchema, mediaInputSchema, homeMediaSchema, homeLinkSchema } from "@/lib/catalog/validation";
 import { getImageAssetPaths } from "@/lib/catalog/products";
 import { createSupabaseServerClient, getActiveAdmin } from "@/lib/supabase/server";
 
@@ -22,6 +23,7 @@ function makeSlug(value: string) {
 
 const productSchema = z.object({
   id: z.string().uuid(),
+  expected_updated_at: z.iso.datetime({ offset: true }).nullable(),
   name: z.string().trim().min(1, "Escribe el nombre del producto.").max(180),
   slug: z.string().trim().regex(slugPattern, "Usa minúsculas, números y guiones en el slug."),
   description: z.string().trim().max(5000).nullable(),
@@ -53,6 +55,9 @@ function hasPublishableVariant(variants: unknown[]) {
 }
 
 function catalogSaveError(error: { code?: string; message?: string }) {
+  if (error.code === "40001") return "Otro cambio actualizó el producto o el stock. Recarga la ficha antes de guardar.";
+  if (error.message?.includes("STOCK_REASON")) return "Indica el motivo del ajuste de stock.";
+  if (error.message?.includes("STOCK_BELOW_RESERVED")) return "El stock no puede quedar por debajo de las unidades reservadas.";
   if (error.code === "23505" && error.message?.toLowerCase().includes("sku")) {
     return "Ese SKU ya está asignado a otra variante. Usa un SKU distinto.";
   }
@@ -86,7 +91,8 @@ function catalogSaveError(error: { code?: string; message?: string }) {
   if (error.code === "22P02") {
     return "No se pudo guardar porque falta una lista de precios o un almacén válido. Revisa la configuración del catálogo.";
   }
-  return `No se pudo guardar el catálogo: ${error.message ?? "error desconocido"}`;
+  console.error("CATALOG_SAVE_FAILED", error.code ?? "unknown");
+  return "No se pudo guardar el catálogo. Revisa los datos o vuelve a intentarlo.";
 }
 
 export type ProductActionState = { error?: string; success?: boolean };
@@ -127,7 +133,9 @@ export async function saveProductAction(
 
   let payload: Record<string, unknown>;
   try {
-    payload = JSON.parse(String(formData.get("catalogJson") ?? "{}"));
+    const json: unknown = JSON.parse(String(formData.get("catalogJson") ?? "{}"));
+    if (!json || typeof json !== "object" || Array.isArray(json)) return { error: "Formulario inválido." };
+    payload = json as Record<string, unknown>;
   } catch {
     return { error: "El formulario no tiene un formato válido." };
   }
@@ -135,6 +143,7 @@ export async function saveProductAction(
   const parsed = productSchema.safeParse({
     ...payload,
     id: String(payload.id || randomUUID()),
+    expected_updated_at: payload.expected_updated_at ?? null,
     description: String(payload.description ?? "").trim() || null,
     short_description: String(payload.short_description ?? "").trim() || null,
     subcategory_id: payload.subcategory_id || null,
@@ -148,8 +157,11 @@ export async function saveProductAction(
 
   const colorIds = Array.isArray(payload.color_ids) ? payload.color_ids : [];
   const sizeIds = Array.isArray(payload.size_ids) ? payload.size_ids : [];
-  const variants = Array.isArray(payload.variants) ? payload.variants : [];
-  const media = Array.isArray(payload.media) ? payload.media : [];
+  const parsedVariants = z.array(variantInputSchema).max(400).safeParse(payload.variants);
+  const parsedMedia = z.array(mediaInputSchema).max(60).safeParse(payload.media);
+  if (!parsedVariants.success || !parsedMedia.success) return { error: (!parsedVariants.success ? parsedVariants.error : !parsedMedia.success ? parsedMedia.error : null)?.issues[0]?.message ?? "Revisa variantes e imágenes." };
+  const variants = parsedVariants.data;
+  const media = parsedMedia.data;
   if ([...colorIds, ...sizeIds].some((id) => !z.string().uuid().safeParse(id).success)) {
     return { error: "Revisa los colores y tallas seleccionados." };
   }
@@ -224,28 +236,11 @@ export async function setProductStatusAction(formData: FormData): Promise<never>
   const id = String(formData.get("id") ?? "");
   const status = z.enum(["draft", "published", "archived"]).safeParse(String(formData.get("status") ?? ""));
   if (!z.string().uuid().safeParse(id).success || !status.success) redirect("/admin/products?error=invalid");
-  if (status.data === "published") {
-    const [productResult, colorsResult, sizesResult, mediaResult, variantsResult] = await Promise.all([
-      supabase.from("products").select("subcategory_id").eq("id", id).maybeSingle(),
-      supabase.from("product_colors").select("color_id", { count: "exact", head: true }).eq("product_id", id),
-      supabase.from("product_sizes").select("size_id", { count: "exact", head: true }).eq("product_id", id),
-      supabase.from("product_media").select("id", { count: "exact", head: true }).eq("product_id", id),
-      supabase
-        .from("product_variants")
-        .select("sku, is_active, variant_prices(amount_cents, is_active, price_list_id)")
-        .eq("product_id", id),
-    ]);
-    if (productResult.error || !productResult.data?.subcategory_id) redirect("/admin/products?error=subcategory");
-    if (colorsResult.error || !colorsResult.count) redirect("/admin/products?error=colors");
-    if (sizesResult.error || !sizesResult.count) redirect("/admin/products?error=sizes");
-    if (mediaResult.error || !mediaResult.count) redirect("/admin/products?error=media");
-    if (variantsResult.error || !hasPublishableVariant((variantsResult.data ?? []).map((variant: any) => ({
-      ...variant,
-      prices: variant.variant_prices,
-    })))) redirect("/admin/products?error=variant");
-  }
   const { error } = await supabase.from("products").update({ status: status.data }).eq("id", id);
-  if (error) redirect("/admin/products?error=save");
+  if (error) {
+    const rule = error.message.match(/PUBLISH_REQUIRES_(SUBCATEGORY|COLORS|SIZES|MEDIA|VARIANT)/)?.[1]?.toLowerCase();
+    redirect(`/admin/products?error=${rule ?? "save"}`);
+  }
   revalidatePath("/");
   revalidateTag("catalog");
   revalidatePath("/admin/products");
@@ -298,9 +293,10 @@ export async function saveCatalogValueAction(formData: FormData): Promise<never>
   const { count } = await supabase.from(valueTable).select("id", { count: "exact", head: true });
   const record = {
     id: randomUUID(), name, slug, sort_order: count ?? 0, is_active: true,
-    ...(valueTable === "colors" ? { hex_color: hexColor } : {}),
   };
-  const { error } = await (supabase.from(valueTable) as any).insert(record);
+  const { error } = valueTable === "colors"
+    ? await supabase.from("colors").insert({ ...record, hex_color: hexColor })
+    : await supabase.from(valueTable).insert(record);
   if (error) redirect(`/admin/${valueTable}?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath(`/admin/${valueTable}`);
@@ -341,17 +337,11 @@ export async function updateCatalogValueAction(
     return { error: "La descripción no puede superar los 1000 caracteres." };
   }
 
-  const changes = {
-    name,
-    slug,
-    ...(valueTable === "colors" ? { hex_color: hexColor } : {}),
-    ...(valueTable === "categories" ? { description } : {}),
-  };
-  const { data, error } = await (supabase.from(valueTable) as any)
-    .update(changes)
-    .eq("id", id)
-    .select("id")
-    .maybeSingle();
+  const changes = { name, slug };
+  const request = valueTable === "categories" ? supabase.from("categories").update({ ...changes, description })
+    : valueTable === "colors" ? supabase.from("colors").update({ ...changes, hex_color: hexColor })
+    : supabase.from(valueTable).update(changes);
+  const { data, error } = await request.eq("id",id).select("id").maybeSingle();
   if (error || !data) {
     if (error?.code === "23505") return { error: "Ya existe un valor con ese nombre." };
     return { error: "No se pudo actualizar el valor. Inténtalo de nuevo." };
@@ -416,27 +406,23 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
   }
 
   const folder = String(formData.get("folder") ?? "products").trim().replace(/[^a-z0-9_-]/gi, "");
-  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime"];
+  const allowedMime = Object.keys(MEDIA_MIME_EXTENSIONS);
   if (!allowedMime.includes(file.type)) {
-    return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM, MOV)." };
+    return { error: "Formato no permitido. Solo se aceptan imágenes (JPG, PNG, WebP, AVIF) y videos (MP4, WebM)." };
   }
 
-  const maxBytes = 50 * 1024 * 1024; // 50MB
-  if (file.size > maxBytes) {
-    return { error: "El archivo supera el límite de 50 MB permitido para multimedia." };
+  const maxBytes = MEDIA_MAX_BYTES;
+  if (file.size === 0 || file.size > maxBytes) {
+    return { error: "El archivo supera el límite de 10 MB permitido para multimedia." };
   }
 
-  const extension = file.name.split(".").pop()?.toLowerCase() || "webp";
-  const safeName = file.name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/^-|-$/g, "");
-  const uniquePrefix = `${Date.now()}-${randomUUID().slice(0, 6)}`;
-  const filePath = `${folder}/${uniquePrefix}-${safeName}`;
+  const extension = MEDIA_MIME_EXTENSIONS[file.type];
+  const baseName = file.name.replace(/\.[^.]+$/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,100) || "archivo";
+  const filePath = `${folder || "products"}/${randomUUID()}-${baseName}.${extension}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  if (!matchesMediaSignature(buffer, file.type)) return { error: "El contenido del archivo no corresponde al formato indicado." };
   const { error: uploadError } = await supabase.storage.from("catalog-media").upload(filePath, buffer, {
     contentType: file.type,
     upsert: false,
@@ -449,7 +435,7 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
   const { data: urlData } = supabase.storage.from("catalog-media").getPublicUrl(filePath);
   const publicUrl = urlData.publicUrl;
 
-  await supabase.from("media_assets").insert({
+  const { error: metadataError } = await supabase.from("media_assets").insert({
     bucket_id: "catalog-media",
     file_path: filePath,
     public_url: publicUrl,
@@ -457,6 +443,12 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
     content_type: file.type,
     file_size_bytes: file.size,
   });
+
+  if (metadataError) {
+    const { error: cleanupError } = await supabase.storage.from("catalog-media").remove([filePath]);
+    if (cleanupError) console.error("MEDIA_UPLOAD_CLEANUP_FAILED", cleanupError.message);
+    return { error: "No se pudo registrar el archivo. Vuelve a intentarlo." };
+  }
 
   revalidatePath("/admin/media");
   return {
@@ -467,17 +459,19 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadMedia
   };
 }
 
-export async function deleteMediaAssetAction(id: string, filePath: string): Promise<{ success?: boolean; error?: string }> {
+export async function deleteMediaAssetAction(id: string): Promise<{ success?: boolean; error?: string }> {
   const { supabase, user } = await getActiveAdmin();
   if (!supabase || !user) return { error: "No autorizado." };
-
-  if (filePath) {
-    await supabase.storage.from("catalog-media").remove([filePath]);
+  if (!z.uuid().safeParse(id).success) return { error: "Archivo inválido." };
+  const { data: asset, error } = await supabase.rpc("begin_media_deletion", { p_id: id });
+  if (error || !asset?.length) return { error: "No se puede eliminar un archivo en uso. Retíralo primero de productos y portada." };
+  const { error: removeError } = await supabase.storage.from("catalog-media").remove([asset[0].file_path]);
+  if (removeError) {
+    await supabase.rpc("finish_media_deletion", { p_id: id, p_removed: false });
+    return { error: "Storage no pudo eliminar el archivo. Inténtalo de nuevo." };
   }
-  if (id) {
-    await supabase.from("media_assets").delete().eq("id", id);
-  }
-
+  const { error: finishError } = await supabase.rpc("finish_media_deletion", { p_id: id, p_removed: true });
+  if (finishError) return { error: "El archivo se eliminó, pero falta limpiar su registro. Reintenta la eliminación." };
   revalidatePath("/admin/media");
   return { success: true };
 }
@@ -498,7 +492,10 @@ export async function saveHomeSlideAction(formData: FormData): Promise<{ success
   const sort_order = Number(formData.get("sort_order") ?? 0);
   const is_active = formData.get("is_active") === "true" || formData.get("is_active") === "on";
 
-  if (!media_url) return { error: "Debes asignar una imagen o video al slide." };
+  const validation = z.object({ id: z.uuid().optional(), title: z.string().max(180).nullable(), subtitle: z.string().max(1000).nullable(),
+    media_url: homeMediaSchema, href: homeLinkSchema.nullable(), button_label: z.string().max(100).nullable(), sort_order: z.number().int().min(0).max(10000) })
+    .safeParse({ id, title, subtitle, media_url, href, button_label, sort_order });
+  if (!validation.success) return { error: validation.error.issues[0].message };
 
   const payload = {
     title,
@@ -512,7 +509,8 @@ export async function saveHomeSlideAction(formData: FormData): Promise<{ success
   };
 
   if (id) {
-    const { error } = await supabase.from("home_slides").update(payload).eq("id", id);
+    const { data, error } = await supabase.from("home_slides").update(payload).eq("id", id).select("id").maybeSingle();
+    if (!data && !error) return { error: "El slide ya no existe. Actualiza la vista." };
     if (error) return { error: error.message };
   } else {
     const { error } = await supabase.from("home_slides").insert(payload);
@@ -542,7 +540,8 @@ export async function toggleHomeBannerActiveAction(identifier: string, is_active
   const { supabase, user } = await getActiveAdmin();
   if (!supabase || !user) return { error: "No autorizado." };
 
-  const { data: existing } = await supabase.from("home_banners").select("id").eq("identifier", identifier).maybeSingle();
+  const { data: existing, error: existingError } = await supabase.from("home_banners").select("id").eq("identifier", identifier).maybeSingle();
+  if (existingError) return { error: "No se pudo consultar la configuración." };
   if (!existing) {
     const defaults: Record<string, { title: string; subtitle: string | null; button_label: string; href: string; image_url: string }> = {
       main_promo: {
@@ -571,7 +570,7 @@ export async function toggleHomeBannerActiveAction(identifier: string, is_active
         subtitle: "Síguenos en redes sociales y comparte tu look con #vintage29",
         button_label: "VER TIKTOK",
         href: "https://www.tiktok.com",
-        image_url: "https://yrcnamfovydovywecdfb.supabase.co/storage/v1/object/public/catalog-media/home/1792016344950-83fd77-gaa.mp4",
+        image_url: "",
       },
     };
 
@@ -604,10 +603,9 @@ export async function reorderHomeSlidesAction(orderedIds: string[]): Promise<{ s
   const { supabase, user } = await getActiveAdmin();
   if (!supabase || !user) return { error: "No autorizado." };
 
-  const updates = orderedIds.map((id, index) =>
-    supabase.from("home_slides").update({ sort_order: index + 1 }).eq("id", id)
-  );
-  await Promise.all(updates);
+  if (!z.array(z.uuid()).max(100).safeParse(orderedIds).success) return { error: "Orden inválido." };
+  const { error } = await supabase.rpc("reorder_home_slides", { p_ids: orderedIds });
+  if (error) return { error: "No se pudo guardar el orden. Recarga los slides y vuelve a intentarlo." };
 
   revalidatePath("/");
   revalidatePath("/admin/home");
@@ -653,6 +651,10 @@ export async function saveHomeBannerAction(formData: FormData): Promise<{ succes
     }
   }
 
+  const validation = z.object({ identifier: z.enum(["main_promo","coupon_banner","mosaic_mini_banner","social_section"]),
+    title: z.string().max(180), subtitle: z.string().max(1000).nullable(), button_label: z.string().max(100),
+    href: homeLinkSchema, image_url: homeMediaSchema.or(z.literal("")) }).safeParse({identifier,title,subtitle,button_label,href,image_url});
+  if (!validation.success) return { error: validation.error.issues[0].message };
   const { error } = await supabase.from("home_banners").upsert({
     identifier,
     title,
@@ -710,6 +712,10 @@ export async function saveCampaignMosaicAction(formData: FormData): Promise<{ su
     return { error: "El mosaico requiere exactamente 4 imágenes." };
   }
 
+  const validatedTiles = z.array(z.object({ identifier: z.string().optional(), title: z.string().max(180).optional(),
+    button_label: z.string().trim().min(1).max(100), href: homeLinkSchema.optional(), image_url: homeMediaSchema })).length(4).safeParse(tiles);
+  if (!validatedTiles.success) return { error: validatedTiles.error.issues[0].message };
+  tiles = validatedTiles.data;
   for (let i = 0; i < 4; i++) {
     const tile = tiles[i];
     if (!tile.image_url) {

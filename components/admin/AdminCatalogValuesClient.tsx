@@ -6,6 +6,7 @@ import { saveCatalogValueAction } from "@/app/admin/actions";
 import CatalogValueTable, { type CatalogValueKind, type ManagedCatalogValue } from "@/components/admin/CatalogValueTable";
 import { useAdminUserId } from "@/components/admin/AdminClientProvider";
 import { useAdminQuery } from "@/components/admin/useAdminQuery";
+import { readAllPages } from "@/lib/supabase/pagination";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export type { CatalogValueKind };
@@ -26,13 +27,9 @@ export default function AdminCatalogValuesClient({ kind, saved, error }: { kind:
   const loadValues = useCallback(async () => {
     const supabase = createSupabaseBrowserClient();
     if (!supabase) throw new Error("No se pudo iniciar la conexión con el catálogo.");
-    const columns = kind === "colors" ? "id, name, sort_order, is_active, hex_color" : "id, name, sort_order, is_active";
-    const { data, error: requestError } = await (supabase.from(kind) as any)
-      .select(columns)
-      .order("sort_order")
-      .order("name");
-    if (requestError) throw new Error(requestError.message);
-    return (data ?? []) as ManagedCatalogValue[];
+    const request = kind === "colors" ? supabase.from("colors").select("id, name, sort_order, is_active, hex_color")
+      : supabase.from(kind).select("id, name, sort_order, is_active");
+    return readAllPages<ManagedCatalogValue>((from,to) => request.order("sort_order").order("name").order("id").range(from,to));
   }, [kind]);
   const { data, loading, error: loadError } = useAdminQuery(cacheKey, loadValues, {
     invalidatePrefix: `admin:${userId}:`,

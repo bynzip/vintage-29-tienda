@@ -38,14 +38,9 @@ async function findRelatedProducts(kind: CatalogValueKind, value: ManagedCatalog
     const { data: children, error: childrenError } = await supabase.from("categories").select("id").eq("parent_id", value.id);
     if (childrenError) throw new Error(childrenError.message);
     const categoryIds = [value.id, ...(children ?? []).map((category) => category.id)];
-    const [subcategoryResult, legacyCategoryResult] = await Promise.all([
-      supabase.from("products").select("id").in("subcategory_id", categoryIds),
-      supabase.from("products").select("id").in("category_id", categoryIds),
-    ]);
-    if (subcategoryResult.error || legacyCategoryResult.error) {
-      throw new Error(subcategoryResult.error?.message ?? legacyCategoryResult.error?.message);
-    }
-    productIds = [...(subcategoryResult.data ?? []), ...(legacyCategoryResult.data ?? [])].map((product) => product.id);
+    const { data, error } = await supabase.from("products").select("id").in("subcategory_id", categoryIds);
+    if (error) throw new Error(error.message);
+    productIds = (data ?? []).map((product) => product.id);
   } else if (kind === "colors") {
     const [links, variants] = await Promise.all([
       supabase.from("product_colors").select("product_id").eq("color_id", value.id),
@@ -194,7 +189,7 @@ function CatalogValueDialog({
     ? <>Se eliminará <strong>{value.name}</strong> del catálogo y se quitará la relación de los productos que lo usaban. Los productos no se borran y conservan su estado.</>
     : kind === "categories"
       ? <>Se eliminará <strong>{value.name}</strong> junto con sus subcategorías. Los productos relacionados no se borran: perderán la categoría asignada y, si estaban publicados, pasarán a borrador.</>
-      : <>Se eliminará <strong>{value.name}</strong> del catálogo. Los productos no se borran: perderán este {kind === "colors" ? "color" : "talla"}, sus variantes que lo usaban se eliminarán también y, si estaban publicados, pasarán a borrador.</>;
+      : <>Se eliminará <strong>{value.name}</strong> del catálogo. Los productos no se borran: perderán este {kind === "colors" ? "color" : "talla"}, sus variantes que lo usaban quedarán inactivas y conservarán su historial y, si estaban publicados, pasarán a borrador.</>;
 
   return (
     <div className="admin-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -213,11 +208,11 @@ function CatalogValueDialog({
           <input type="hidden" name="id" value={value.id} />
           <p className="admin-dialog-copy">{deleteCopy} Esta acción no se puede deshacer.</p>
           {relatedLoading ? <p className="catalog-status" role="status">Buscando productos relacionados…</p> : relatedError ? <p className="admin-alert" role="alert">No se pudo comprobar qué productos usan este valor: {relatedError}</p> : related.length ? <>
-            {relatedVariants > 0 && <p className="admin-dialog-copy">También se eliminarán <strong>{relatedVariants}</strong> {relatedVariants === 1 ? "variante" : "variantes"} que usan este valor.</p>}
+            {relatedVariants > 0 && <p className="admin-dialog-copy">Quedarán inactivas <strong>{relatedVariants}</strong> {relatedVariants === 1 ? "variante" : "variantes"} que usan este valor.</p>}
             <p className="admin-dialog-subtitle">Productos afectados ({related.length})</p>
             <ul className="admin-related-products">{related.map((product) => <li key={product.id}><Link href={`/admin/products/${product.id}/edit`} onClick={onClose}>{product.name}</Link><span>{product.status === "published" ? "Publicado" : product.status === "archived" ? "Archivado" : "Borrador"}</span></li>)}</ul>
           </> : <p className="admin-dialog-copy">No hay productos relacionados. Se eliminará sin afectar nada más.</p>}
-          <label className="admin-confirm-check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.currentTarget.checked)} /><span>Confirmo la eliminación definitiva y entiendo el cambio de estado de los productos.</span></label>
+          <label className="admin-confirm-check"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.currentTarget.checked)} /><span>Confirmo el retiro del catálogo y entiendo el cambio de estado de los productos.</span></label>
           {deleteState.error && <p className="admin-alert" role="alert">{deleteState.error}</p>}
           <div className="admin-dialog-actions"><button type="button" className="outline-button" onClick={onClose}>CANCELAR</button><button type="submit" className="dark-button" disabled={!confirmed || relatedLoading || Boolean(relatedError) || deletePending}>{deletePending ? "ELIMINANDO…" : "ELIMINAR VALOR"}</button></div>
         </form>}

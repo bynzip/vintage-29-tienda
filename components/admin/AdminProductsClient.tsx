@@ -7,6 +7,8 @@ import { setProductStatusAction } from "@/app/admin/actions";
 import ArchiveButton from "@/components/admin/ArchiveButton";
 import { useAdminUserId } from "@/components/admin/AdminClientProvider";
 import { useAdminQuery } from "@/components/admin/useAdminQuery";
+import { isCurrentPrice } from "@/lib/catalog/pricing";
+import { readAllPages } from "@/lib/supabase/pagination";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type ProductRow = {
@@ -15,11 +17,13 @@ type ProductRow = {
   status: "draft" | "published" | "archived";
   updated_at: string;
   product_variants?: Array<{
-    variant_prices?: Array<{ amount_cents: number; is_active: boolean }>;
+    is_active: boolean;
+    variant_prices?: Array<{ amount_cents: number; is_active: boolean; price_list_id: string; starts_at: string | null; ends_at: string | null }>;
   }>;
 };
 type FilterOption = { id: string; name: string; parent_id?: string | null };
 type ProductsData = {
+  priceListId: string;
   products: ProductRow[];
   categories: FilterOption[];
   colors: FilterOption[];
@@ -52,13 +56,14 @@ export default function AdminProductsClient({
     const supabase = createSupabaseBrowserClient();
     if (!supabase) throw new Error("No se pudo iniciar la conexión con el catálogo.");
 
-    const [categoriesResult, colorsResult, sizesResult, fitsResult] = await Promise.all([
+    const [categoriesResult, colorsResult, sizesResult, fitsResult, configResult] = await Promise.all([
       supabase.from("categories").select("id, name, parent_id").eq("is_active", true).order("sort_order").order("name"),
       supabase.from("colors").select("id, name").eq("is_active", true).order("sort_order").order("name"),
       supabase.from("sizes").select("id, name").eq("is_active", true).order("sort_order").order("name"),
       supabase.from("fits").select("id, name").eq("is_active", true).order("sort_order").order("name"),
+      supabase.from("catalog_settings").select("price_list_id").single(),
     ]);
-    const filterError = categoriesResult.error ?? colorsResult.error ?? sizesResult.error ?? fitsResult.error;
+    const filterError = categoriesResult.error ?? colorsResult.error ?? sizesResult.error ?? fitsResult.error ?? configResult.error;
     if (filterError) throw new Error(filterError.message);
 
     const candidateSets: string[][] = [];
@@ -66,12 +71,9 @@ export default function AdminProductsClient({
       const selectedCategory = (categoriesResult.data ?? []).find((category) => category.id === categoryId);
       const childIds = (categoriesResult.data ?? []).filter((category) => category.parent_id === categoryId).map((category) => category.id);
       const categoryIds = selectedCategory?.parent_id ? [categoryId] : [categoryId, ...childIds];
-      const [subcategories, legacyCategories] = await Promise.all([
-        supabase.from("products").select("id").in("subcategory_id", categoryIds),
-        supabase.from("products").select("id").in("category_id", categoryIds),
-      ]);
-      if (subcategories.error || legacyCategories.error) throw new Error(subcategories.error?.message ?? legacyCategories.error?.message);
-      candidateSets.push([...new Set([...(subcategories.data ?? []), ...(legacyCategories.data ?? [])].map((product) => product.id))]);
+      const { data, error } = await supabase.from("products").select("id").in("subcategory_id", categoryIds);
+      if (error) throw new Error(error.message);
+      candidateSets.push((data ?? []).map((product) => product.id));
     }
     if (colorId) {
       const [links, variants] = await Promise.all([
@@ -100,13 +102,13 @@ export default function AdminProductsClient({
       : null;
     let request = supabase
       .from("products")
-      .select("id, name, status, updated_at, product_variants(variant_prices(amount_cents, is_active))")
-      .order("updated_at", { ascending: false })
-      .limit(100);
+      .select("id, name, status, updated_at, product_variants(is_active, variant_prices(amount_cents, is_active, price_list_id, starts_at, ends_at))")
+      .order("updated_at", { ascending: false }).order("id");
     if (query) request = request.ilike("name", `%${query}%`);
     if (candidateIds) request = request.in("id", candidateIds);
     if (candidateIds?.length === 0) {
       return {
+        priceListId: configResult.data!.price_list_id,
         products: [],
         categories: (categoriesResult.data ?? []) as FilterOption[],
         colors: (colorsResult.data ?? []) as FilterOption[],
@@ -115,9 +117,9 @@ export default function AdminProductsClient({
       };
     }
 
-    const { data, error: requestError } = await request;
-    if (requestError) throw new Error(requestError.message);
+    const data = await readAllPages((from, to) => request.range(from, to));
     return {
+      priceListId: configResult.data!.price_list_id,
       products: (data ?? []) as unknown as ProductRow[],
       categories: (categoriesResult.data ?? []) as FilterOption[],
       colors: (colorsResult.data ?? []) as FilterOption[],
@@ -178,8 +180,8 @@ export default function AdminProductsClient({
             </thead>
             <tbody>{products.map((product) => {
               const prices = product.product_variants
-                ?.flatMap((variant) => variant.variant_prices ?? [])
-                .filter((price) => price.is_active)
+                ?.filter((variant) => variant.is_active).flatMap((variant) => variant.variant_prices ?? [])
+                .filter((price) => price.price_list_id === data?.priceListId && isCurrentPrice(price))
                 .map((price) => price.amount_cents / 100) ?? [];
               const lowestPrice = prices.length ? Math.min(...prices) : null;
               return (

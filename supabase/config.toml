@@ -22,4 +22,5 @@ additional_redirect_urls = ["http://localhost:3000"]
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+# Habilita el proveedor email; el registro público sigue bloqueado por auth.enable_signup=false.
+enable_signup = true

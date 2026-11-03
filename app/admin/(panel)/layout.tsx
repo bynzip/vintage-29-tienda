@@ -4,6 +4,8 @@ import { signOutAction } from "@/app/admin/actions";
 import { AdminClientProvider } from "@/components/admin/AdminClientProvider";
 import { getActiveAdmin } from "@/lib/supabase/server";
 
+export const metadata = { robots: { index: false, follow: false } };
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {

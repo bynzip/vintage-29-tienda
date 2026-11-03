@@ -4,217 +4,230 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
-import { createSupabasePublicClient, hasSupabaseConfig } from "@/lib/supabase/server";
-import type { ProductRow, ProductMediaRow } from "@/lib/supabase/database.types";
+import type { QueryData, SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
+import {
+  createSupabasePublicClient,
+  hasSupabaseConfig,
+  getActiveAdmin,
+} from "@/lib/supabase/server";
+import { readAllPages } from "@/lib/supabase/pagination";
+import { isCatalogMediaUrl } from "@/lib/catalog/validation";
 import type { CatalogProduct, CatalogResult } from "@/lib/catalog/types";
-
 export type { CatalogProduct, CatalogResult } from "@/lib/catalog/types";
 
-type CatalogSourceRow = ProductRow & {
-  legacy_category?: { name: string } | null;
-  subcategory?: { name: string } | null;
-  fit?: { name: string } | null;
-  product_colors?: Array<{
-    color_id?: string;
-    position: number;
-    color: { name: string; hex_color: string | null } | null;
-  }>;
-  product_sizes?: Array<{
-    position: number;
-    size: { name: string } | null;
-  }>;
-  product_media?: ProductMediaRow[];
-  product_variants?: Array<{
-    id: string;
-    sku: string | null;
-    variant_name: string | null;
-    is_active: boolean;
-    variant_option_values?: Array<{ option_value_id: string }>;
-    variant_prices?: Array<{ amount_cents: number; is_active: boolean }>;
-  }>;
-};
-
-type VariantAvailabilityRow = { variant_id: string; is_available: boolean };
-
-const cachedAvailableAssets = cache(() => new Set(getImageAssetPaths()));
+function catalogQuery(supabase: SupabaseClient<Database>) {
+  return supabase
+    .from("products")
+    .select(
+      `
+    id, subcategory_id, name, slug, description, short_description, gender, fit_id,
+    material_summary, care_instructions, status, is_featured, deleted_at, created_at, updated_at,
+    product_media(id, color_id, asset_path, media_type, alt_text, position, is_primary, is_lifestyle),
+    product_colors(color_id, position, color:colors!product_colors_color_id_fkey(id, name, hex_color)),
+    product_sizes(position, size:sizes!product_sizes_size_id_fkey(id, name)),
+    subcategory:categories!products_subcategory_id_fkey(id, name, slug, parent_id),
+    fit:fits!products_fit_id_fkey(name)
+  `,
+    )
+    .eq("status", "published")
+    .is("deleted_at", null);
+}
+type SourceProduct = QueryData<ReturnType<typeof catalogQuery>>[number];
+type PublicVariant =
+  Database["public"]["Views"]["public_catalog_variants"]["Row"];
 
 function mapProduct(
-  product: CatalogSourceRow,
-  availability: Map<string, boolean>,
+  product: SourceProduct,
+  sourceVariants: PublicVariant[],
   compact = false,
 ): CatalogProduct {
-  const availableAssets = cachedAvailableAssets();
-  const colorMap = new Map<string, string>();
-  for (const pc of product.product_colors ?? []) {
-    if (pc.color && pc.color_id) {
-      colorMap.set(pc.color_id, pc.color.name);
-    }
-  }
-
-  const media = (product.product_media ?? [])
+  const colorMap = new Map(
+    product.product_colors.flatMap((pc) =>
+      pc.color ? [[pc.color_id, pc.color.name] as const] : [],
+    ),
+  );
+  const assets = new Set(getImageAssetPaths());
+  const media = [...product.product_media]
     .filter((item) => item.media_type === "image")
-    .sort((a, b) => a.position - b.position)
-    .map((item) => {
-      const isRemote = item.asset_path.startsWith("http://") || item.asset_path.startsWith("https://");
-      const url = isRemote ? item.asset_path : (availableAssets.has(item.asset_path) ? item.asset_path : "");
-      return {
-        url,
-        order: item.position,
-        lifestyle: item.is_lifestyle,
-        alt: item.alt_text,
-        colorId: item.color_id ?? null,
-        colorName: item.color_id ? (colorMap.get(item.color_id) ?? null) : null,
-      };
-    });
-  const availableMedia = media.filter((item) => item.url);
-  const images = compact
-    ? availableMedia.filter((item, index) => index < 2 || item.lifestyle)
-    : media;
-  const variants = (product.product_variants ?? [])
-    .filter((variant) => variant.is_active)
-    .map((variant) => {
-      const price = variant.variant_prices?.find((item) => item.is_active);
-      const available = availability.get(variant.id) ?? false;
-      return {
-        id: variant.id,
-        sku: variant.sku,
-        name: variant.variant_name,
-        price: price ? price.amount_cents / 100 : null,
-        available,
-      };
-    });
-  const pricedVariant = variants.find((variant) => variant.price !== null);
+    .sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) || a.position - b.position,
+    )
+    .filter(
+      (item) =>
+        isCatalogMediaUrl(item.asset_path) &&
+        (item.asset_path.startsWith("http") || assets.has(item.asset_path)),
+    )
+    .map((item) => ({
+      url: item.asset_path,
+      order: item.position,
+      lifestyle: item.is_lifestyle,
+      alt: item.alt_text || product.name,
+      colorId: item.color_id,
+      colorName: item.color_id ? (colorMap.get(item.color_id) ?? null) : null,
+    }));
+  const variants = sourceVariants
+    .filter((v) => v.product_id === product.id && v.id)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map((v) => ({
+      id: v.id!,
+      colorId: v.color_id,
+      sizeId: v.size_id,
+      sku: v.sku,
+      name: v.variant_name,
+      price: v.amount_cents === null ? null : v.amount_cents / 100,
+      available: Boolean(v.is_available && v.amount_cents),
+    }));
+  const prices = variants.flatMap((v) => (v.price === null ? [] : [v.price]));
   return {
     id: product.id,
     slug: product.slug,
     name: product.name,
-    description: product.description?.trim() || null,
-    shortDescription: product.short_description?.trim() || null,
-    category: product.subcategory?.name ?? product.legacy_category?.name ?? null,
-    gender: product.gender,
+    description: product.description,
+    shortDescription: product.short_description,
+    category: product.subcategory?.name ?? null,
+    categoryId: product.subcategory?.id ?? null,
+    categorySlug: product.subcategory?.slug ?? null,
+    parentCategoryId: product.subcategory?.parent_id ?? null,
+    gender: product.gender as CatalogProduct["gender"],
     fit: product.fit?.name ?? null,
-    material: product.material_summary?.trim() || null,
-    careInstructions: product.care_instructions?.trim() || null,
-    countryOfOrigin: product.country_of_origin?.trim() || null,
-    colors: (product.product_colors ?? [])
+    material: product.material_summary,
+    careInstructions: product.care_instructions,
+    colors: [...product.product_colors]
       .sort((a, b) => a.position - b.position)
-      .flatMap((item) => item.color ? [{ name: item.color.name, hexColor: item.color.hex_color }] : []),
-    sizes: (product.product_sizes ?? [])
+      .flatMap((pc) =>
+        pc.color
+          ? [
+              {
+                id: pc.color.id,
+                name: pc.color.name,
+                hexColor: pc.color.hex_color,
+              },
+            ]
+          : [],
+      ),
+    sizes: [...product.product_sizes]
       .sort((a, b) => a.position - b.position)
-      .flatMap((item) => item.size ? [item.size.name] : []),
-    price: pricedVariant?.price ?? null,
-    available: variants.some((variant) => variant.available),
-    cover: images.find((image) => image.url)?.url ?? null,
-    images,
+      .flatMap((ps) => (ps.size ? [ps.size.name] : [])),
+    sizeOptions: product.product_sizes.flatMap((ps) =>
+      ps.size ? [{ id: ps.size.id, name: ps.size.name }] : [],
+    ),
+    price: prices.length ? Math.min(...prices) : null,
+    available: variants.some((v) => v.available),
+    cover: media[0]?.url ?? null,
+    images: compact
+      ? media.filter((item, index) => index < 2 || item.lifestyle)
+      : media,
     variants,
   };
 }
 
-const productSelect = `
-  id, brand_id, category_id, subcategory_id, name, slug, description, short_description,
-  gender, age_group, fit_id, material_summary, care_instructions,
-  country_of_origin, status, is_featured, seo_title, seo_description,
-  deleted_at, created_at, updated_at,
-  legacy_category:categories!products_category_id_fkey(name),
-  product_media(id, product_id, color_id, asset_path, media_type, alt_text, position, is_primary, is_lifestyle, created_at, updated_at),
-  product_colors(color_id, position, color:colors!product_colors_color_id_fkey(name, hex_color)),
-  subcategory:categories!products_subcategory_id_fkey(name),
-  product_variants(id, sku, variant_name, is_active, variant_prices(amount_cents, is_active))
-`;
-
-const productDetailSelect = `${productSelect},
-  fit:fits!products_fit_id_fkey(name),
-  product_sizes(position, size:sizes!product_sizes_size_id_fkey(name))
-`;
-
-async function readVariantAvailability(
-  supabase: any,
-  products: CatalogSourceRow[],
-): Promise<{ availability: Map<string, boolean>; error: unknown | null }> {
-  const variantIds = products.flatMap((product) =>
-    (product.product_variants ?? []).filter((variant) => variant.is_active).map((variant) => variant.id),
-  );
-  if (!variantIds.length) return { availability: new Map(), error: null };
-
-  const { data, error } = await supabase
-    .from("public_variant_availability")
-    .select("variant_id, is_available")
-    .in("variant_id", variantIds);
-  if (error) return { availability: new Map(), error };
-
-  return {
-    availability: new Map(
-      ((data ?? []) as VariantAvailabilityRow[]).map((row) => [row.variant_id, row.is_available]),
-    ),
-    error: null,
-  };
+async function loadVariants(
+  supabase: SupabaseClient<Database>,
+  productIds: string[],
+) {
+  const variants: PublicVariant[] = [];
+  for (let i = 0; i < productIds.length; i += 100) {
+    variants.push(
+      ...(await readAllPages((from, to) =>
+        supabase
+          .from("public_catalog_variants")
+          .select("*")
+          .in("product_id", productIds.slice(i, i + 100))
+          .order("id")
+          .range(from, to),
+      )),
+    );
+  }
+  return variants;
 }
-
 async function readPublishedProducts(): Promise<CatalogResult> {
   if (!hasSupabaseConfig()) return { status: "not-configured", products: [] };
-  const supabase = createSupabasePublicClient() as any;
+  const supabase = createSupabasePublicClient();
   if (!supabase) return { status: "not-configured", products: [] };
-  const { data, error } = await supabase
-    .from("products")
-    .select(productSelect)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
-  if (error || !data) return { status: "error", products: [] };
-  const products = data as CatalogSourceRow[];
-  const { availability, error: availabilityError } = await readVariantAvailability(supabase, products);
-  if (availabilityError) return { status: "error", products: [] };
-  return { status: "ready", products: products.map((product) => mapProduct(product, availability, true)) };
+  try {
+    const products = await readAllPages((from, to) =>
+      catalogQuery(supabase)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    );
+    const variants = await loadVariants(
+      supabase,
+      products.map((p) => p.id),
+    );
+    return {
+      status: "ready",
+      products: products.map((p) => mapProduct(p, variants, true)),
+    };
+  } catch (error) {
+    console.error(
+      "CATALOG_READ_FAILED",
+      error instanceof Error ? error.message : "unknown",
+    );
+    return { status: "error", products: [] };
+  }
 }
-
 export const getPublishedProducts = unstable_cache(
   readPublishedProducts,
-  ["published-products"],
-  { revalidate: 60, tags: ["catalog"] },
+  ["published-products-v2"],
+  {
+    revalidate: 60,
+    tags: ["catalog"],
+  },
 );
-
 async function readPublishedProductBySlug(slug: string) {
-  if (!hasSupabaseConfig()) return { status: "not-configured" as const, product: null };
-  const supabase = createSupabasePublicClient() as any;
+  if (!hasSupabaseConfig())
+    return { status: "not-configured" as const, product: null };
+  const supabase = createSupabasePublicClient();
   if (!supabase) return { status: "not-configured" as const, product: null };
-  const { data, error } = await supabase
-    .from("products")
-    .select(productDetailSelect)
-    .eq("slug", slug)
-    .eq("status", "published")
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (error) return { status: "error" as const, product: null };
-  if (!data) return { status: "not-found" as const, product: null };
-  const product = data as CatalogSourceRow;
-  const { availability, error: availabilityError } = await readVariantAvailability(supabase, [product]);
-  if (availabilityError) return { status: "error" as const, product: null };
-  return { status: "ready" as const, product: mapProduct(product, availability) };
+  try {
+    const { data, error } = await catalogQuery(supabase)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return { status: "not-found" as const, product: null };
+    const variants = await loadVariants(supabase, [data.id]);
+    return { status: "ready" as const, product: mapProduct(data, variants) };
+  } catch (error) {
+    console.error(
+      "PRODUCT_READ_FAILED",
+      error instanceof Error ? error.message : "unknown",
+    );
+    return { status: "error" as const, product: null };
+  }
 }
-
 export const getPublishedProductBySlug = cache(async (slug: string) =>
   unstable_cache(
     () => readPublishedProductBySlug(slug),
-    ["published-product", slug],
+    ["published-product-v2", slug],
     { revalidate: 60, tags: ["catalog", `product:${slug}`] },
   )(),
 );
 
 const cachedImageAssetPaths = cache(() => getImageAssetPathsUncached());
 
-export function getImageAssetPaths(directory = path.join(process.cwd(), "public", "imagenes")) {
-  if (directory === path.join(process.cwd(), "public", "imagenes")) return cachedImageAssetPaths();
+export function getImageAssetPaths(
+  directory = path.join(process.cwd(), "public", "imagenes"),
+) {
+  if (directory === path.join(process.cwd(), "public", "imagenes"))
+    return cachedImageAssetPaths();
   return getImageAssetPathsUncached(directory);
 }
 
-function getImageAssetPathsUncached(directory = path.join(process.cwd(), "public", "imagenes")) {
+function getImageAssetPathsUncached(
+  directory = path.join(process.cwd(), "public", "imagenes"),
+) {
   const paths: string[] = [];
   const walk = (current: string) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const absolute = path.join(current, entry.name);
       if (entry.isDirectory()) walk(absolute);
       else if (/\.(?:jpe?g|png|webp|avif)$/i.test(entry.name)) {
-        paths.push(`/${path.relative(path.join(process.cwd(), "public"), absolute).replaceAll("\\", "/")}`);
+        paths.push(
+          `/${path.relative(path.join(process.cwd(), "public"), absolute).replaceAll("\\", "/")}`,
+        );
       }
     }
   };
@@ -228,32 +241,21 @@ export type AvailableAsset = {
 };
 
 export async function getAvailableMediaAssets(): Promise<AvailableAsset[]> {
-  try {
-    const supabase = await createSupabasePublicClient();
-    if (supabase) {
-      const { data } = await supabase
-        .from("media_assets")
-        .select("public_url, file_name, file_path")
-        .order("created_at", { ascending: false });
-
-      if (data && data.length > 0) {
-        return data.map((item) => {
-          const folder = item.file_path && item.file_path.includes("/")
-            ? item.file_path.split("/").slice(0, -1).join("/")
-            : "";
-          return {
-            path: item.public_url,
-            label: folder ? `${item.file_name} (${folder})` : item.file_name,
-          };
-        });
-      }
-    }
-  } catch (err) {
-    console.error("Error fetching media_assets from Supabase:", err);
-  }
-
-  return getImageAssetPaths().map((p) => ({
-    path: p,
-    label: p.split("/").pop() || p,
-  }));
+  const { supabase, user } = await getActiveAdmin();
+  if (!supabase || !user) return [];
+  const assets = await readAllPages((from, to) =>
+    supabase
+      .from("media_assets")
+      .select("public_url, file_name, file_path")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
+  return [
+    ...assets.map((item) => ({ path: item.public_url, label: item.file_name })),
+    ...getImageAssetPaths().map((path) => ({
+      path,
+      label: path.split("/").pop() || path,
+    })),
+  ];
 }

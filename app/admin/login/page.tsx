@@ -3,7 +3,7 @@ import Link from "next/link";
 import { signInAction } from "@/app/admin/actions";
 import { hasSupabaseConfig } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Acceso administrador" };
+export const metadata: Metadata = { title: "Acceso administrador", robots: { index: false, follow: false } };
 
 type LoginProps = { searchParams: Promise<{ error?: string }> };
 
