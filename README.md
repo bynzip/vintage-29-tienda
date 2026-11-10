@@ -2,6 +2,8 @@
 
 Hito actual: mostrar productos correctamente desde Supabase y administrarlos bajo `/admin`. Next.js 15.5.28, React, TypeScript y Supabase Auth/PostgreSQL/Storage. Pagos, pedidos, Culqi y Odoo pertenecen a la siguiente fase. El buscador público, filtros, carrito y favoritos persistentes también quedan para esa fase de frontend.
 
+El estado del proyecto y la planificación están en [la documentación](docs/documentacion.md).
+
 ## Inicio
 
 Requisitos: Node 22, pnpm 10.14 y un proyecto Supabase propio con las migraciones actuales. Docker Desktop es necesario para la verificación completa local, no para ejecutar la app contra un proyecto remoto.
@@ -15,6 +17,16 @@ pnpm dev
 Las variables obligatorias son `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y, para un proyecto HTTPS remoto, `SUPABASE_PERSONAL_PROJECT_CONFIRMED=true`. La URL y clave pública se incorporan al build: cambiar de proyecto exige reiniciar desarrollo o recompilar y desplegar. `NEXT_PUBLIC_SITE_URL` configura canonical/sitemap. La clave `SUPABASE_SERVICE_ROLE_KEY` se usa exclusivamente en scripts de transferencia/seed; el servidor de la tienda no la necesita.
 
 No compartas archivos de entorno ni sus valores. El alta de admin se hace en Supabase Auth y mediante `admin_profiles`; no hay registro público. Ver instrucciones en [supabase/README.md](supabase/README.md).
+
+Archivos de entorno en esta instalación:
+
+| Archivo | Función |
+| --- | --- |
+| `.env.example` | Plantilla versionada sin credenciales; no selecciona un proyecto. |
+| `.env.local` | Configuración que Next.js carga para la app; actualmente apunta al proyecto nuevo. |
+| `.env.target.local` | Credenciales privadas del proyecto nuevo para las operaciones de transferencia. |
+
+Los dos archivos locales están ignorados por Git. La clave privada solo debe permanecer en el archivo destinado a scripts, no en la configuración de producción de la app. Los archivos `.env` no cambian el proyecto enlazado por la CLI de Supabase. El respaldo histórico contiene referencias del origen para restauración, pero la configuración actual de la app usa el proyecto nuevo.
 
 ## Comprobaciones
 

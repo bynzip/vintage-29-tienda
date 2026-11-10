@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { projectClient, checked } from "./lib/project.mjs";
+import { isProjectMediaUrl, replaceMediaReferences } from "./lib/media-references.mjs";
 
 // Whitelist shared with the lean schema. Unknown/legacy columns never enter a snapshot.
 const fields = {
@@ -132,9 +133,14 @@ if (mode === "export") {
     );
   const origin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin;
   const references = [
+    ...tables.categories.map((r) => r.image_path),
     ...tables.product_media.map((r) => r.asset_path),
     ...tables.home_slides.map((r) => r.media_url),
     ...tables.home_banners.map((r) => r.image_url),
+    // Campaign links may point directly to a public file, not only a page.
+    ...[...tables.home_slides, ...tables.home_banners]
+      .map((r) => r.href)
+      .filter((url) => isProjectMediaUrl(url, origin)),
   ];
   for (const url of references.filter((r) => r && /^https?:/.test(r))) {
     const parsed = new URL(url);
@@ -174,6 +180,7 @@ if (mode === "export") {
   }
   const snapshot = {
     format: "vintage29-catalog-v1",
+    source_origin: origin,
     exported_at: new Date().toISOString(),
     price_list_id: priceListId,
     warehouse_id: warehouseId,
@@ -202,6 +209,8 @@ if (mode === "export") {
     !Array.isArray(snapshot.files)
   )
     throw new Error("Formato de exportación inválido.");
+  if (snapshot.source_origin === new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin)
+    throw new Error("El destino coincide con el proyecto de origen de la exportación.");
   for (const table of Object.keys(fields))
     if (!Array.isArray(snapshot.tables[table]))
       throw new Error(`Falta ${table}.`);
@@ -210,6 +219,10 @@ if (mode === "export") {
     if (digest(bytes) !== file.sha256)
       throw new Error(`El archivo ${file.path} no coincide con su checksum.`);
   }
+  const manifest = new Set(snapshot.files.map((file) => file.path));
+  if (manifest.size !== snapshot.files.length ||
+      snapshot.tables.media_assets.some((asset) => !manifest.has(asset.file_path)))
+    throw new Error("El manifiesto no cubre todos los archivos de la biblioteca o contiene rutas duplicadas.");
   if (!process.argv.includes("--apply")) {
     console.log(
       JSON.stringify({
@@ -261,14 +274,7 @@ if (mode === "export") {
     asset.public_url = data.publicUrl;
     asset.deleting_at = null;
   }
-  for (const [table, column] of [
-    ["product_media", "asset_path"],
-    ["home_slides", "media_url"],
-    ["home_banners", "image_url"],
-  ]) {
-    for (const row of snapshot.tables[table])
-      row[column] = replacement.get(row[column]) ?? row[column];
-  }
+  replaceMediaReferences(snapshot.tables, replacement);
   await checked(
     supabase.rpc("restore_catalog_snapshot", { p_snapshot: snapshot }),
   );

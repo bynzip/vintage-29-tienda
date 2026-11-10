@@ -1,5 +1,8 @@
 node_modules
 .next
+.next-dev
+.verification
+catalog-backups
 out
 dist
 .git

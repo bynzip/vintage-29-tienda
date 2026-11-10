@@ -29,6 +29,8 @@ Copiar `.env.example` a un archivo privado para el destino y completar URL, clav
 
 ## 2. Elegir carga inicial o transferencia
 
+Para la preparación paso a paso en Windows, el alcance y los campos antiguos no incluidos, consulta [MIGRACION-NUEVO-PROYECTO.md](MIGRACION-NUEVO-PROYECTO.md).
+
 **Catálogo nuevo:** ejecutar el seed sin `--demo`. Crea los 11 nombres y 65 fotos como borradores; los existentes se conservan. Completar datos reales desde el admin antes de publicar.
 
 ```sh
@@ -38,7 +40,7 @@ node --env-file=.env.target.local scripts/seed-products.mjs --apply --confirm-pe
 
 **Conservar el catálogo del proyecto anterior:** detener las ediciones administrativas durante la exportación. La lectura de varias tablas y Storage necesita esa ventana para mantener una copia consistente. El origen puede tener el esquema anterior de este repositorio; el exportador selecciona únicamente campos compatibles. No es un migrador genérico de cualquier aplicación.
 
-Preparar `.env.source.local` y `.env.target.local` por separado. Ambos deben apuntar a proyectos propios y tener la clave privada de su respectivo proyecto. Los archivos `.env.*` y `catalog-backups/` están ignorados por Git.
+Para una transferencia nueva, crear `.env.source.local` para el origen y usar `.env.target.local` para el destino. Ambos deben apuntar a proyectos propios y tener la clave privada de su respectivo proyecto. El archivo del origen anterior fue eliminado después de la migración inicial. `.env.local` configura la app; no se utiliza para exportar ni importar. Los archivos `.env.*` y `catalog-backups/` están ignorados por Git.
 
 ```sh
 # Origen: solo lecturas; descarga también los archivos de la biblioteca.
@@ -52,6 +54,8 @@ node --env-file=.env.target.local scripts/transfer-catalog.mjs import --director
 Si el origen tiene varias listas/almacenes y carece de `catalog_settings`, el exportador exige `--price-list UUID --warehouse UUID` para evitar elegir datos arbitrarios. No consolida almacenes. Si hay reservas sin conciliar, detiene la exportación. Si detecta medios de otro proveedor/proyecto, deben incorporarse al Storage propio antes de exportar.
 
 El importador verifica SHA-256 de los archivos; conserva IDs, publicación, precios del canal, atributos, saldos e historial; cambia las URLs al Storage destino. No copia usuarios Auth ni secretos. Los actores históricos del origen se desvinculan de Auth en destino. Cuando el historial anterior no explica el saldo, registra la diferencia como saldo inicial de migración, sin inventar ventas pasadas.
+
+Las referencias a archivos del bucket en las imágenes de categorías, productos y portada y en los enlaces de slides y banners se actualizan al Storage de destino. Los enlaces de navegación se conservan tal como están: antes de publicar, revisa desde el panel los destinos que apunten a `localhost`, dominios antiguos o páginas de prueba y cámbialos por rutas válidas en el nuevo sitio.
 
 La restauración de tablas es una transacción. Storage no comparte esa transacción: si falla, la base revierte y pueden quedar archivos sin referencias en destino. Repetir la importación admite archivos idénticos por checksum y rechaza archivos diferentes. El destino debe seguir vacío; nunca sobrescribe un catálogo existente. No ejecutes el seed antes de importar.
 
